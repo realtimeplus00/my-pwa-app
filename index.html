@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🦋 나비 키우기</title>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#1a1a2e; --panel:#16213e; --card:#0f3460;
+    --accent:#e94560; --green:#4ecca3; --yellow:#f5a623;
+    --purple:#a78bfa; --pink:#f472b6; --white:#eef0f2; --gray:#8892a4;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html{ height:-webkit-fill-available; }
+  body{
+    font-family:'Nanum Gothic',sans-serif; background:var(--bg); color:var(--white);
+    height:100vh; height:100dvh; height:-webkit-fill-available;
+    overflow:hidden;
+  }
+  #header{
+    background:var(--panel); border-bottom:2px solid var(--card);
+    padding:5px 14px; display:flex; flex-direction:column; gap:3px; flex-shrink:0;
+    position:relative; z-index:10;
+  }
+  #header-top{ display:flex; align-items:center; justify-content:space-between; }
+  #header-bottom{ display:flex; align-items:center; justify-content:space-between; }
+  #header-petinfo{
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+    font-family:'Jua',cursive; font-size:11.5px; color:var(--yellow);
+    border-top:1px solid rgba(255,255,255,.07); padding-top:3px; margin-top:1px;
+  }
+  #petinfo-name{ color:var(--pink); }
+  #petinfo-born{ color:#93c5fd; }
+  #petinfo-days{ color:var(--green); }
+  #datetime{ font-family:'Jua',cursive; font-size:13px; color:var(--green); letter-spacing:1px; }
+  #stage-badge{ background:var(--accent); color:#fff; font-family:'Jua',cursive; font-size:13px; padding:3px 12px; border-radius:20px; }
+  #weather-info{ font-family:'Jua',cursive; font-size:13px; color:#93c5fd; letter-spacing:.5px; flex:1; }
+  #weather-label{ font-family:'Jua',cursive; font-size:13px; color:var(--gray); margin-right:4px; }
+  #loc-wrap{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  #loc-btn{
+    display:flex; flex-direction:column; align-items:center; gap:1px; cursor:pointer;
+    background:none; border:none; padding:4px 6px;
+    -webkit-tap-highlight-color:rgba(0,0,0,0);
+    touch-action:manipulation;
+  }
+  #loc-btn-icon{
+    font-size:18px; line-height:1; pointer-events:none;
+    transition:transform 0.6s;
+  }
+  #loc-btn-icon.spinning{ animation:spin 0.7s linear; }
+  @keyframes spin{ from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  #loc-btn-label{ font-family:'Jua',cursive; font-size:10px; color:var(--gray); white-space:nowrap; pointer-events:none; }
+
+  #top{
+    flex:1; position:relative; overflow:hidden;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  #scene-canvas{ position:absolute; inset:0; width:100%; height:100%; }
+
+  #pet-container{
+    position:relative; z-index:2;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    /* push down so egg sits on the nest visually */
+    margin-top: 30px;
+  }
+  #speech-bubble{
+    position:relative; background:var(--white); color:#1a1a2e;
+    border-radius:16px; padding:8px 14px; font-size:13px; font-weight:700;
+    max-width:220px; text-align:center; line-height:1.4; min-height:38px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 14px rgba(0,0,0,.4);
+  }
+  #speech-bubble::after{
+    content:''; position:absolute; bottom:-11px; left:50%; transform:translateX(-50%);
+    border:6px solid transparent; border-top-color:var(--white);
+  }
+  #pet-emoji{
+    font-size:58px; line-height:1;
+    filter:drop-shadow(0 0 18px rgba(78,204,163,.7));
+    animation:float 3s ease-in-out infinite; transition:filter .5s;
+  }
+  @keyframes float{
+    0%,100%{ transform:translateY(0) rotate(-2deg); }
+    50%{ transform:translateY(-10px) rotate(2deg); }
+  }
+  .pet-sick #pet-emoji{
+    animation:shake .45s ease-in-out infinite;
+    filter:drop-shadow(0 0 18px rgba(233,69,96,.7)) grayscale(60%);
+  }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-5px) rotate(-4deg); }
+    75%{ transform:translateX(5px) rotate(4deg); }
+  }
+
+  #status-row{
+    display:flex; gap:6px; padding:5px 10px;
+    background:var(--panel); border-top:1px solid var(--card); border-bottom:1px solid var(--card); flex-shrink:0;
+  }
+  .stat-item{ flex:1; display:flex; flex-direction:column; gap:2px; }
+  .stat-label{ font-size:9px; color:var(--gray); }
+  .stat-bar{ height:6px; background:var(--card); border-radius:3px; overflow:hidden; }
+  .stat-fill{ height:100%; border-radius:3px; transition:width .5s ease; }
+  .fill-food{ background:var(--yellow); } .fill-clean{ background:var(--green); }
+  .fill-toilet{ background:var(--purple); } .fill-snack{ background:var(--pink); }
+
+  #bottom{ background:var(--panel); padding:5px 10px 6px; display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
+  #health-bar-wrap, #happy-bar-wrap{ display:flex; align-items:center; gap:8px; }
+  #health-label{ font-family:'Jua',cursive; font-size:12px; color:var(--accent); white-space:nowrap; }
+  #happy-label { font-family:'Jua',cursive; font-size:12px; color:#facc15; white-space:nowrap; }
+  #health-bar, #happy-bar{ flex:1; height:10px; background:var(--card); border-radius:5px; overflow:hidden; }
+  #health-fill{ height:100%; background:linear-gradient(90deg,#e94560,#f97316); border-radius:5px; transition:width .5s; }
+  #happy-fill { height:100%; background:linear-gradient(90deg,#facc15,#fb923c); border-radius:5px; transition:width .5s; }
+
+  .btn-row{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+  .btn{
+    border:none; border-radius:12px; padding:6px 4px;
+    font-family:'Jua',cursive; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    transition:transform .12s; position:relative; overflow:hidden;
+  }
+  .btn:active{ transform:scale(.93); }
+  .btn-icon{ font-size:18px; } .btn-label{ font-size:10px; }
+  .btn-food  { background:linear-gradient(135deg,#f5a623,#f7c67a); color:#1a1a2e; box-shadow:0 3px 10px rgba(245,166,35,.4); }
+  .btn-clean { background:linear-gradient(135deg,#4ecca3,#7edec9); color:#1a1a2e; box-shadow:0 3px 10px rgba(78,204,163,.4); }
+  .btn-toilet{ background:linear-gradient(135deg,#a78bfa,#c4b5fd); color:#1a1a2e; box-shadow:0 3px 10px rgba(167,139,250,.4); }
+  .btn-snack { background:linear-gradient(135deg,#f472b6,#f9a8d4); color:#1a1a2e; box-shadow:0 3px 10px rgba(244,114,182,.4); }
+  .btn-sleep { background:linear-gradient(135deg,#60a5fa,#93c5fd); color:#1a1a2e; box-shadow:0 3px 10px rgba(96,165,250,.4); }
+  .btn-play  { background:linear-gradient(135deg,#34d399,#6ee7b7); color:#1a1a2e; box-shadow:0 3px 10px rgba(52,211,153,.4); }
+  .btn.cooling::after{
+    content:attr(data-cd); position:absolute; inset:0;
+    background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center;
+    font-size:15px; font-family:'Jua',cursive; color:#fff; border-radius:12px;
+  }
+  #question-row{
+    position:absolute; bottom:8px; left:6px; right:6px; z-index:3;
+    display:grid; grid-template-columns:repeat(4,1fr); gap:5px;
+  }
+  .q-btn{
+    background:rgba(10,15,40,0.72); border:2px solid #facc15;
+    border-radius:10px; color:#facc15; font-family:'Jua',cursive;
+    font-size:11px; padding:6px 3px; cursor:pointer; text-align:center;
+    line-height:1.3; transition:background .15s, transform .1s;
+    -webkit-tap-highlight-color:rgba(0,0,0,0);
+    word-break:keep-all;
+  }
+  .q-btn:active{ transform:scale(.93); background:rgba(250,204,21,0.18); }
+  /* ── 페이지 시스템 ── */
+  .page{ display:none; flex-direction:column; height:100%; }
+  .page.active{ display:flex; }
+  #page3{ flex-direction:column; height:100vh; height:100dvh; }
+
+  /* ── 1페이지: 타이틀 ── */
+  #page1{
+    align-items:center; justify-content:center; gap:28px;
+    background:linear-gradient(160deg,#0d0d2b 0%,#1a1a3e 60%,#0f2040 100%);
+    padding:30px 24px;
+  }
+  #p1-title{
+    font-family:'Jua',cursive; font-size:38px; color:var(--green);
+    text-shadow:0 0 24px rgba(78,204,163,.6),0 0 60px rgba(78,204,163,.3);
+    letter-spacing:2px; text-align:center;
+  }
+  #p1-butterfly{ font-size:72px; animation:float 3s ease-in-out infinite; filter:drop-shadow(0 0 24px rgba(167,139,250,.8)); }
+  #p1-desc{
+    font-family:'Nanum Gothic',sans-serif; font-size:15px; color:var(--white);
+    text-align:center; line-height:2; opacity:.88;
+    background:rgba(255,255,255,.06); border-radius:16px; padding:18px 22px;
+  }
+  #p1-start{
+    background:linear-gradient(135deg,var(--green),#38b2a0);
+    color:#0d1a14; font-family:'Jua',cursive; font-size:20px;
+    border:none; border-radius:30px; padding:14px 52px;
+    cursor:pointer; box-shadow:0 4px 20px rgba(78,204,163,.45);
+    transition:transform .12s, box-shadow .12s;
+  }
+  #p1-start:active{ transform:scale(.95); box-shadow:0 2px 10px rgba(78,204,163,.3); }
+
+  /* ── 2페이지: 별칭+이름 설정 ── */
+  #page2{
+    align-items:center; justify-content:center; gap:22px;
+    background:linear-gradient(160deg,#0d0d2b 0%,#1a1a3e 60%,#0f2040 100%);
+    padding:30px 24px;
+  }
+  #p2-title{ font-family:'Jua',cursive; font-size:26px; color:var(--green); text-align:center; }
+  .setup-card{
+    width:100%; max-width:340px;
+    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12);
+    border-radius:18px; padding:20px 18px; display:flex; flex-direction:column; gap:14px;
+  }
+  .setup-card h3{ font-family:'Jua',cursive; font-size:15px; color:var(--gray); margin-bottom:2px; }
+  .setup-row{ display:flex; align-items:center; gap:8px; }
+  .setup-label{ font-family:'Jua',cursive; font-size:15px; color:var(--white); white-space:nowrap; flex-shrink:0; }
+  .setup-input{
+    flex:1; min-width:0; width:0;
+    background:rgba(255,255,255,.1); border:1.5px solid rgba(255,255,255,.2);
+    border-radius:10px; color:var(--white); font-family:'Jua',cursive; font-size:15px;
+    padding:8px 10px; outline:none; transition:border-color .2s;
+  }
+  .setup-input:focus{ border-color:var(--green); }
+  .setup-save{
+    flex-shrink:0;
+    background:linear-gradient(135deg,var(--accent),#c73652);
+    color:#fff; font-family:'Jua',cursive; font-size:13px;
+    border:none; border-radius:16px; padding:8px 14px;
+    cursor:pointer; transition:transform .12s; white-space:nowrap;
+  }
+  .setup-save:active{ transform:scale(.95); }
+  .setup-saved{ font-family:'Jua',cursive; font-size:13px; color:var(--green); opacity:0; transition:opacity .3s; }
+  .setup-saved.show{ opacity:1; }
+  #p2-next{
+    background:linear-gradient(135deg,var(--purple),#7c5ccc);
+    color:#fff; font-family:'Jua',cursive; font-size:18px;
+    border:none; border-radius:30px; padding:13px 46px;
+    cursor:pointer; box-shadow:0 4px 18px rgba(167,139,250,.4);
+    transition:transform .12s; margin-top:6px;
+  }
+  #p2-next:active{ transform:scale(.95); }
+  #p2-greeting{ font-family:'Jua',cursive; font-size:17px; color:var(--yellow); text-align:center; min-height:26px; }
+
+  #toast{
+    position:fixed; top:54px; left:50%; transform:translateX(-50%) translateY(-70px);
+    background:var(--accent); color:#fff; font-family:'Jua',cursive;
+    font-size:13px; padding:7px 18px; border-radius:28px;
+    transition:transform .3s; z-index:100; white-space:nowrap; pointer-events:none;
+  }
+  #toast.show{ transform:translateX(-50%) translateY(0); }
+</style>
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="🦋 나비 키우기">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#7c3aed">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <script>
+    if('serviceWorker' in navigator){
+      window.addEventListener('load',()=>{
+        navigator.serviceWorker.register('./service-worker.js');
+      });
+    }
+    window.addEventListener('beforeinstallprompt',e=>{
+      e.preventDefault();
+      window._pwaE=e;
+      var b=document.createElement('div');
+      b.style='position:fixed;bottom:0;left:0;right:0;background:#7c3aed;color:#fff;padding:18px;text-align:center;z-index:9999;font-size:15px;font-weight:bold;cursor:pointer;font-family:sans-serif;';
+      b.innerHTML='📲 홈화면에 앱 추가하기 · Add to Home Screen';
+      b.onclick=async function(){window._pwaE.prompt();var r=await window._pwaE.userChoice;if(r.outcome==='accepted')b.remove();};
+      document.body.appendChild(b);
+    });
+  </script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════ -->
+<!--  1페이지: 타이틀 화면              -->
+<!-- ══════════════════════════════════ -->
+<div id="page1" class="page active">
+  <div id="p1-butterfly">🦋</div>
+  <div id="p1-title">나비 키우기</div>
+  <div id="p1-desc">
+    이제 나비를 키울 건데<br>
+    알부터 시작합니다.<br><br>
+    아래 버튼을 누르면 시작합니다.
+  </div>
+  <button id="p1-start" onclick="goPage(2)">시작하기</button>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!--  2페이지: 별칭 & 나비 이름 설정    -->
+<!-- ══════════════════════════════════ -->
+<div id="page2" class="page">
+  <div id="p2-title">🌱 시작 설정</div>
+
+  <!-- 내 별칭 -->
+  <div class="setup-card">
+    <h3>👤 내 별칭</h3>
+    <div class="setup-row">
+      <span class="setup-label">내 별칭</span>
+      <input class="setup-input" id="input-nickname" type="text" maxlength="10" placeholder="별칭을 입력해줘요">
+      <button class="setup-save" onclick="saveNickname()">저장</button>
+    </div>
+    <span class="setup-saved" id="saved-nickname">✅ 저장됐어요!</span>
+  </div>
+
+  <!-- 나비 이름 -->
+  <div class="setup-card">
+    <h3 id="p2-greeting"></h3>
+    <div class="setup-row">
+      <span class="setup-label">나비 이름</span>
+      <input class="setup-input" id="input-petname" type="text" maxlength="10" placeholder="나비 이름을 지어줘요">
+      <button class="setup-save" onclick="savePetname()">저장</button>
+    </div>
+    <span class="setup-saved" id="saved-petname">✅ 저장됐어요!</span>
+  </div>
+
+  <button id="p2-next" onclick="goPage(3)">다음 ›</button>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!--  3페이지: 게임 화면                -->
+<!-- ══════════════════════════════════ -->
+<div id="page3" class="page">
+
+<div id="header">
+  <div id="header-top">
+    <div id="datetime">📅 --</div>
+    <div id="stage-badge">🥚 알</div>
+  </div>
+  <div id="header-bottom">
+    <span id="weather-label">오늘 날씨</span>
+    <span id="weather-info">불러오는 중...</span>
+    <div id="loc-wrap">
+      <button id="loc-btn" type="button">
+        <span id="loc-btn-icon">🔄</span>
+        <span id="loc-btn-label">날씨갱신</span>
+      </button>
+    </div>
+  </div>
+  <div id="header-petinfo">
+    <span>이름 : <span id="petinfo-name">--</span></span>
+    <span>·</span>
+    <span>태어난 날 : <span id="petinfo-born">--</span></span>
+    <span id="petinfo-days" style="color:var(--green)"></span>
+  </div>
+</div>
+
+<div id="top">
+  <canvas id="scene-canvas"></canvas>
+  <div id="pet-container">
+    <div id="speech-bubble">안녕! 나를 잘 돌봐줘~ 🥰</div>
+    <div id="pet-emoji">🥚</div>
+  </div>
+  <div id="question-row">
+    <button class="q-btn" onclick="askQ(0)">어제<br>뭐했어?</button>
+    <button class="q-btn" onclick="askQ(1)">좋은 일<br>있어?</button>
+    <button class="q-btn" onclick="askQ(2)">밥은 잘<br>먹었어?</button>
+    <button class="q-btn" onclick="askQ(3)">내일<br>뭐할거야?</button>
+  </div>
+</div>
+
+<div id="status-row">
+  <div class="stat-item"><div class="stat-label">🍃 밥</div>
+    <div class="stat-bar"><div class="stat-fill fill-food" id="b-food" style="width:100%"></div></div></div>
+  <div class="stat-item"><div class="stat-label">🧹 청결</div>
+    <div class="stat-bar"><div class="stat-fill fill-clean" id="b-clean" style="width:100%"></div></div></div>
+  <div class="stat-item"><div class="stat-label">🚽 화장실</div>
+    <div class="stat-bar"><div class="stat-fill fill-toilet" id="b-toilet" style="width:100%"></div></div></div>
+  <div class="stat-item"><div class="stat-label">🍬 간식</div>
+    <div class="stat-bar"><div class="stat-fill fill-snack" id="b-snack" style="width:100%"></div></div></div>
+</div>
+
+<div id="bottom">
+  <div id="health-bar-wrap">
+    <div id="health-label">❤️ 건강</div>
+    <div id="health-bar"><div id="health-fill" style="width:100%"></div></div>
+    <div id="health-val" style="font-size:11px;color:var(--gray);white-space:nowrap">100%</div>
+  </div>
+  <div id="happy-bar-wrap">
+    <div id="happy-label">😊 행복</div>
+    <div id="happy-bar"><div id="happy-fill" style="width:100%"></div></div>
+    <div id="happy-val" style="font-size:11px;color:var(--gray);white-space:nowrap">100%</div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-food"   onclick="doAction('food')"   id="btn-food"><span class="btn-icon">🍃</span><span class="btn-label">온기 주기</span></button>
+    <button class="btn btn-clean"  onclick="doAction('clean')"  id="btn-clean"><span class="btn-icon">🧹</span><span class="btn-label">주변 청소</span></button>
+    <button class="btn btn-toilet" onclick="doAction('toilet')" id="btn-toilet"><span class="btn-icon">🚽</span><span class="btn-label">공기 정화</span></button>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-snack"  onclick="doAction('snack')"  id="btn-snack"><span class="btn-icon">🍬</span><span class="btn-label">특별 간식</span></button>
+    <button class="btn btn-sleep"  onclick="doAction('sleep')"  id="btn-sleep"><span class="btn-icon">😴</span><span class="btn-label">재워주기</span></button>
+    <button class="btn btn-play"   onclick="doAction('play')"   id="btn-play"><span class="btn-icon">🎮</span><span class="btn-label">놀아주기</span></button>
+  </div>
+</div>
+<div id="toast">잠깐만요!</div>
+</div><!-- /page3 -->
+
+<script>
+// ═══════════════════════════════════════
+//  페이지 관리
+// ═══════════════════════════════════════
+let userNickname='', userPetname='';
+
+function goPage(n){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page'+n).classList.add('active');
+  if(n===3){
+    setTimeout(()=>{
+      if(!S.bornDate){ S.bornDate=Date.now(); }
+      resizeCanvas();
+      updatePetInfo();
+      render();
+    },50);
+  }
+}
+
+function saveNickname(){
+  const val=document.getElementById('input-nickname').value.trim();
+  if(!val){ return; }
+  userNickname=val;
+  const saved=document.getElementById('saved-nickname');
+  saved.classList.add('show');
+  setTimeout(()=>saved.classList.remove('show'),2000);
+  // 나비 이름 카드 제목 업데이트
+  document.getElementById('p2-greeting').textContent=`${userNickname} 님, 나비 이름도 지어주세요 🦋`;
+}
+
+function savePetname(){
+  const val=document.getElementById('input-petname').value.trim();
+  if(!val){ return; }
+  userPetname=val;
+  const saved=document.getElementById('saved-petname');
+  saved.classList.add('show');
+  setTimeout(()=>saved.classList.remove('show'),2000);
+}
+
+function updatePetInfo(){
+  const nameEl=document.getElementById('petinfo-name');
+  const bornEl=document.getElementById('petinfo-born');
+  const daysEl=document.getElementById('petinfo-days');
+  if(!nameEl) return;
+  nameEl.textContent=userPetname||'--';
+  if(!S.bornDate){ bornEl.textContent='--'; daysEl.textContent=''; return; }
+  const born=new Date(S.bornDate);
+  const p=n=>String(n).padStart(2,'0');
+  bornEl.textContent=`${born.getFullYear()}.${p(born.getMonth()+1)}.${p(born.getDate())}`;
+  const diffDays=Math.floor((Date.now()-S.bornDate)/86400000);
+  daysEl.textContent=`(+${diffDays}일)`;
+}
+
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+const STAGES=[{name:'알',emoji:'🥚'},{name:'애벌레',emoji:'🐛'},{name:'누에고치',emoji:'🫘'},{name:'나비',emoji:'🦋'}];
+const DRAIN={food:1.5,clean:0.8,toilet:1.2,snack:0.6};
+const CD={food:30000,clean:20000,toilet:20000,snack:120000,sleep:60000,play:45000};
+const MSG={
+  hungry:['따뜻함이 필요해요... 🌡️','온기가 식어가요~ 으슬으슬 😢','차가워요! 빨리 온기를 주세요!'],
+  dirty:['주변이 너무 지저분해요! 🍂','청소해줘요~ 😤','어수선해서 못 있겠어요!'],
+  toilet:['공기가 탁해요! 😮‍💨','공기 정화가 필요해요~ 😖','숨쉬기 힘들어요!'],
+  nosnack:['간식 먹고 싶어요! 🍬','특별한 거 먹고 싶다~ 😋'],
+  sad:['조금 외로워요... 🥺','놀아줘요~ 😟','심심해요 💙'],
+  sick:['몸이 안 좋아요... 😷','기운이 없어요 💔','많이 아파요...😿'],
+  happy:['오늘도 잘 부탁해요! 🥰','행복해요~ 😊','꼭 나비가 될게요! 🦋','잘 돌봐줘서 고마워요 💚'],
+  cocoon:['번데기 중이에요... 조용히 해줘요 🫘'],
+  butterfly:['나비가 됐어요!!! 🦋✨','날 수 있어요! 훨훨~ 🦋'],
+};
+const FULLMSG={
+  food:['따뜻해요~ 고마워요! 🌡️','온기가 충분해요, 감사해요! 😊','이미 따뜻한데 신경써줘서 감사! 🌿'],
+  clean:['이미 깨끗한데 청소해줘서 고마워요! 🍃','주변이 깔끔해요~ 감사합니다! ✨','신경써줘서 고마워요 💚'],
+  toilet:['공기가 맑아요~ 감사해요! 🌬️','이미 청정해요, 고마워요! 😄','공기는 걱정 없어요, 감사! 🌸'],
+  snack:['간식은 충분해요~ 고마워요! 🍬','배가 너무 부를 것 같아요, 감사해요! 😋','이미 달콤해요! 감사합니다 🍭'],
+};
+let S={stage:0,bornAt:Date.now(),bornDate:null,food:100,clean:100,toilet:100,snack:100,health:100,happy:100,lastTick:Date.now(),cooldowns:{},message:MSG.happy[0],sleeping:false};
+const QMSG=[
+  ['어제는 조용히 실을 뽑았어요~ 🧵','어제는 잎사귀를 잔뜩 먹었어요! 😋','어제는 낮잠을 자면서 쉬었답니다 💤','어제는 네가 보고 싶었어요 🥺'],
+  ['네가 놀러 와줬잖아요! 그게 제일 좋아요 🥰','오늘 잎이 특히 신선했어요! 🍃','햇살이 따뜻해서 기분이 좋았어요 ☀️','딱히 없었지만 네가 있으니까 좋아요 💚'],
+  ['뽕잎을 세 장이나 먹었어요! 😄','오늘은 조금 입맛이 없었어요... 😶','맛있게 냠냠 다 먹었어요! 🍽️','간식도 같이 먹었더니 더 맛있었어요 🍬'],
+  ['내일은 실을 더 열심히 뽑을 거예요! 🧵','내일도 네가 와줬으면 좋겠어요 🥺','내일은 누에고치가 될 수 있을지도? 🫘✨','내일은 푹 쉬면서 성장할 거예요 💪'],
+];
+let qMsgTimer=null;
+function askQ(idx){
+  const reply=QMSG[idx][Math.floor(Math.random()*QMSG[idx].length)];
+  S.message=reply;
+  document.getElementById('speech-bubble').textContent=reply;
+  clearTimeout(qMsgTimer);
+  qMsgTimer=setTimeout(()=>{ qMsgTimer=null; pickMsg(); render(); },6000);
+}
+
+const rand=a=>a[Math.floor(Math.random()*a.length)];
+const clamp=(v,lo=0,hi=100)=>Math.max(lo,Math.min(hi,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const st=()=>STAGES[S.stage];
+
+// ═══════════════════════════════════════
+//  CANVAS SCENE
+// ═══════════════════════════════════════
+const canvas=document.getElementById('scene-canvas');
+const ctx=canvas.getContext('2d');
+let animT=0;
+
+function resizeCanvas(){
+  const top=document.getElementById('top');
+  const w=top.clientWidth, h=top.clientHeight;
+  if(!w||!h){ setTimeout(resizeCanvas,50); return; }
+  canvas.width=w; canvas.height=h;
+}
+
+// ── Sky (시간+날씨 연동) ──────────────────────
+// 시간대별 하늘 색상 팔레트
+const SKY_PALETTES={
+  night:   {top:[8,12,40],    bot:[12,20,55]},   // 0~4시
+  dawn:    {top:[30,20,60],   bot:[90,50,40]},   // 4~6시
+  sunrise: {top:[60,40,80],   bot:[220,120,60]}, // 6~8시
+  morning: {top:[50,110,190], bot:[120,180,230]},// 8~11시
+  noon:    {top:[30,100,200], bot:[100,170,240]},// 11~15시
+  afternoon:{top:[45,90,180], bot:[140,180,230]},// 15~18시
+  sunset:  {top:[60,50,100],  bot:[230,110,50]}, // 18~20시
+  dusk:    {top:[20,20,70],   bot:[80,50,80]},   // 20~22시
+  latenight:{top:[5,8,32],   bot:[10,15,48]},    // 22~24시
+};
+function getSkyPalette(h){
+  if(h<4)  return SKY_PALETTES.night;
+  if(h<6)  return SKY_PALETTES.dawn;
+  if(h<8)  return SKY_PALETTES.sunrise;
+  if(h<11) return SKY_PALETTES.morning;
+  if(h<15) return SKY_PALETTES.noon;
+  if(h<18) return SKY_PALETTES.afternoon;
+  if(h<20) return SKY_PALETTES.sunset;
+  if(h<22) return SKY_PALETTES.dusk;
+  return SKY_PALETTES.latenight;
+}
+// 0~1 사이 부드럽게 혼합
+function blendPalettes(p1,p2,t){
+  return {
+    top:p1.top.map((v,i)=>lerp(v,p2.top[i],t)),
+    bot:p1.bot.map((v,i)=>lerp(v,p2.bot[i],t)),
+  };
+}
+function getCurrentSkyPalette(){
+  const now=new Date();
+  const h=now.getHours()+(now.getMinutes()/60);
+  const breaks=[0,4,6,8,11,15,18,20,22,24];
+  const keys=['night','dawn','sunrise','morning','noon','afternoon','sunset','dusk','latenight','night'];
+  for(let i=0;i<breaks.length-1;i++){
+    if(h>=breaks[i]&&h<breaks[i+1]){
+      const t=(h-breaks[i])/(breaks[i+1]-breaks[i]);
+      return blendPalettes(SKY_PALETTES[keys[i]],SKY_PALETTES[keys[i+1]],t);
+    }
+  }
+  return SKY_PALETTES.latenight;
+}
+
+// 날씨코드 분류
+function getWeatherType(code){
+  if(code===0)                         return 'clear';
+  if(code===1)                         return 'mostly_clear';
+  if(code===2)                         return 'partly_cloudy';
+  if(code===3)                         return 'overcast';
+  if(code>=45&&code<=48)               return 'fog';
+  if(code>=51&&code<=55)               return 'drizzle';
+  if(code>=61&&code<=65)               return 'rain';
+  if(code>=71&&code<=75||code===77)    return 'snow';
+  if(code>=80&&code<=82)               return 'showers';
+  if(code>=95&&code<=99)               return 'thunder';
+  return 'clear';
+}
+
+// 구름 인스턴스
+const CLOUDS=Array.from({length:8},(_,i)=>({
+  x: (i/8)*1.3,   // 0~1.3 (화면 밖 포함)
+  y: 0.05+Math.random()*0.22,
+  w: 0.18+Math.random()*0.22,
+  h: 0.07+Math.random()*0.07,
+  spd: 0.004+Math.random()*0.006,
+  alpha: 0.7+Math.random()*0.3,
+  layer: i%3,     // 0=가장 앞, 2=가장 뒤
+}));
+
+// 눈송이 파티클
+const SNOWFLAKES=Array.from({length:40},(_,i)=>({
+  x:Math.random(), y:Math.random(),
+  r:1+Math.random()*2.5,
+  spd:0.012+Math.random()*0.018,
+  drift:0.003+Math.random()*0.004,
+  ph:Math.random()*Math.PI*2,
+}));
+// 빗방울 파티클
+const RAINDROPS=Array.from({length:60},(_,i)=>({
+  x:Math.random(), y:Math.random(),
+  len:8+Math.random()*12,
+  spd:0.04+Math.random()*0.03,
+  alpha:0.3+Math.random()*0.4,
+}));
+
+
+function drawSky(){
+  const W=canvas.width, H=canvas.height;
+  const {health,clean}=S;
+  const bad=1-Math.min(health,clean)/100;
+  const code=weatherScene.code;
+  const wType=getWeatherType(code);
+  const now=new Date();
+  const hour=now.getHours();
+  const isNight=(hour>=22||hour<5);
+  const isDusk=(hour>=18&&hour<22)||(hour>=5&&hour<8);
+
+  // ① 하늘 그라디언트 (시간대 반영)
+  const pal=getCurrentSkyPalette();
+  // 날씨가 흐리면 채도 줄이고 어둡게
+  const cloudDark = wType==='overcast'?0.45:wType==='rain'||wType==='thunder'||wType==='showers'?0.55:wType==='drizzle'?0.35:wType==='fog'?0.25:0;
+  const tr=pal.top.map(v=>Math.max(0,v-v*cloudDark));
+  const br=pal.bot.map(v=>Math.max(0,v-v*cloudDark));
+  const skyBad=bad*0.5;
+  const g=ctx.createLinearGradient(0,0,0,H*0.72);
+  g.addColorStop(0,`rgb(${lerp(tr[0],lerp(42,10,1-skyBad),skyBad)|0},${lerp(tr[1],lerp(32,12,1-skyBad),skyBad)|0},${lerp(tr[2],lerp(25,20,1-skyBad),skyBad)|0})`);
+  g.addColorStop(1,`rgb(${lerp(br[0],lerp(50,20,1-skyBad),skyBad)|0},${lerp(br[1],lerp(38,15,1-skyBad),skyBad)|0},${lerp(br[2],lerp(22,10,1-skyBad),skyBad)|0})`);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  // ② 안개 효과
+  if(wType==='fog'){
+    const fogA=0.45;
+    const fog=ctx.createLinearGradient(0,H*0.2,0,H*0.8);
+    fog.addColorStop(0,`rgba(200,200,190,${fogA*0.4})`);
+    fog.addColorStop(0.5,`rgba(200,200,190,${fogA})`);
+    fog.addColorStop(1,`rgba(180,180,170,${fogA*0.6})`);
+    ctx.fillStyle=fog; ctx.fillRect(0,0,W,H);
+  }
+
+  // ③ 별 (밤이고 맑을수록)
+  const clearness = wType==='clear'?1:wType==='mostly_clear'?0.7:wType==='partly_cloudy'?0.35:0;
+  const nightness = isNight?1:isDusk?0.3:0;
+  const starA=clamp(health/100*clean/100,0,1)*0.8*clearness*nightness;
+  if(starA>0.03){
+    const starPositions=[[.08,.06],[.22,.03],[.48,.09],[.64,.04],[.36,.13],[.82,.07],[.04,.18],[.53,.02],[.73,.16],[.17,.18],[.9,.12],[.12,.09],[.6,.15],[.78,.04],[.3,.07]];
+    starPositions.forEach(([sx,sy],si)=>{
+      const pulse=0.5+0.5*Math.sin(animT*1.5+sx*7+si);
+      ctx.fillStyle=`rgba(255,255,235,${starA*pulse})`;
+      ctx.beginPath(); ctx.arc(W*sx,H*sy,(1.2+pulse*0.8)*starA,0,Math.PI*2); ctx.fill();
+    });
+    // 큰 별 3개
+    [[.92,.05],[.45,.05],[.15,.04]].forEach(([sx,sy],si)=>{
+      const pulse=0.4+0.6*Math.abs(Math.sin(animT*0.9+si*2.3));
+      ctx.fillStyle=`rgba(255,255,200,${starA*pulse*0.9})`;
+      ctx.beginPath(); ctx.arc(W*sx,H*sy,2.2*pulse,0,Math.PI*2); ctx.fill();
+    });
+  }
+
+  // ④ 달 (밤에만)
+  if(nightness>0.1){
+    const moonA=clamp(health/100*0.85,0,0.85)*nightness*clearness;
+    if(moonA>0.05){
+      const moonR=lerp(245,190,bad), moonGv=lerp(245,150,bad), moonB=lerp(210,110,bad);
+      ctx.save(); ctx.globalAlpha=moonA;
+      const mg=ctx.createRadialGradient(W*0.82,H*0.09,0,W*0.82,H*0.09,30);
+      mg.addColorStop(0,`rgba(${moonR|0},${moonGv|0},${moonB|0},1)`);
+      mg.addColorStop(0.65,`rgba(${moonR|0},${moonGv|0},${moonB|0},0.35)`);
+      mg.addColorStop(1,'transparent');
+      ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(W*0.82,H*0.09,30,0,Math.PI*2); ctx.fill();
+      // 달 광채
+      const halo=ctx.createRadialGradient(W*0.82,H*0.09,20,W*0.82,H*0.09,60);
+      halo.addColorStop(0,`rgba(255,250,200,0.12)`);
+      halo.addColorStop(1,'transparent');
+      ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(W*0.82,H*0.09,60,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // ⑤ 태양 (낮에 맑을 때)
+  const daytime = (!isNight&&!isDusk)?1:(isDusk&&hour>=5&&hour<8)?0.5:0;
+  if(daytime>0.05&&(wType==='clear'||wType==='mostly_clear'||wType==='partly_cloudy')){
+    const sunAlpha=daytime*(wType==='clear'?0.9:wType==='mostly_clear'?0.7:0.45);
+    const sunY=hour<12?lerp(0.22,0.08,(hour-8)/4):lerp(0.08,0.22,(hour-12)/6);
+    ctx.save(); ctx.globalAlpha=sunAlpha;
+    const sunG=ctx.createRadialGradient(W*0.78,H*Math.max(0.05,sunY),0,W*0.78,H*Math.max(0.05,sunY),45);
+    sunG.addColorStop(0,'rgba(255,252,180,1)');
+    sunG.addColorStop(0.4,'rgba(255,230,80,0.7)');
+    sunG.addColorStop(0.8,'rgba(255,200,50,0.2)');
+    sunG.addColorStop(1,'transparent');
+    ctx.fillStyle=sunG; ctx.beginPath(); ctx.arc(W*0.78,H*Math.max(0.05,sunY),45,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // ⑥ 구름 (애니메이션)
+  const cloudCount = wType==='clear'?0:wType==='mostly_clear'?1:wType==='partly_cloudy'?3:wType==='overcast'||wType==='fog'?8:wType==='rain'||wType==='thunder'||wType==='showers'?7:wType==='drizzle'?5:wType==='snow'?6:2;
+  for(let ci=0;ci<Math.min(cloudCount,CLOUDS.length);ci++){
+    const c=CLOUDS[ci];
+    // animT 기반으로 위치 계산 (속도별로 다르게 이동, 1.4 주기로 루프)
+    const rawX=(c.x+animT*c.spd*0.06)%1.4;
+    const cx=W*rawX, cy=H*c.y, cw=W*c.w, ch=H*c.h;
+    const isRainCloud=(wType==='rain'||wType==='thunder'||wType==='showers')&&ci<4;
+    const isDrizzleCloud=wType==='drizzle';
+    const cr=isRainCloud?55:isDrizzleCloud?120:200, cg=isRainCloud?55:isDrizzleCloud?130:210, cb=isRainCloud?70:isDrizzleCloud?145:220;
+    const cloudAlpha=c.alpha*(isRainCloud?0.85:0.72);
+
+    ctx.save();
+    ctx.globalAlpha=cloudAlpha;
+    const cloudG=ctx.createRadialGradient(cx,cy,0,cx,cy+ch*0.3,cw*0.7);
+    cloudG.addColorStop(0,`rgba(${cr+30},${cg+30},${cb+30},0.95)`);
+    cloudG.addColorStop(0.5,`rgba(${cr},${cg},${cb},0.8)`);
+    cloudG.addColorStop(1,'transparent');
+    ctx.fillStyle=cloudG;
+    // 구름 모양 (타원 여러개 합성)
+    ctx.beginPath(); ctx.ellipse(cx,cy+ch*0.25,cw*0.48,ch*0.5,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx-cw*0.22,cy+ch*0.4,cw*0.32,ch*0.42,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx+cw*0.22,cy+ch*0.38,cw*0.3,ch*0.4,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx-cw*0.1,cy+ch*0.15,cw*0.28,ch*0.35,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx+cw*0.15,cy+ch*0.12,cw*0.25,ch*0.3,0,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // ⑦ 빗줄기
+  if(wType==='rain'||wType==='showers'||wType==='drizzle'||wType==='thunder'){
+    const spd=wType==='drizzle'?0.18:wType==='rain'?0.32:wType==='thunder'?0.45:0.38;
+    const dropCount=wType==='drizzle'?28:wType==='thunder'?55:42;
+    const baseAlpha=wType==='drizzle'?0.55:0.7;
+    const dropLen=wType==='drizzle'?6:wType==='thunder'?18:12;
+    RAINDROPS.forEach((d,di)=>{
+      if(di>=dropCount) return;
+      // d.y를 phase offset으로 사용해 빗방울이 화면 전체에 고르게 분포
+      const ry=H*((d.y+animT*d.spd*spd)%1.0);
+      const rx=W*d.x;
+      ctx.strokeStyle=`rgba(160,200,240,${d.alpha*baseAlpha})`;
+      ctx.lineWidth=wType==='drizzle'?0.9:1.4;
+      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx-2,ry+dropLen); ctx.stroke();
+    });
+  }
+
+  // ⑧ 눈송이
+  if(wType==='snow'){
+    SNOWFLAKES.forEach(f=>{
+      const fy=H*((f.y+animT*f.spd*0.08)%1.05);
+      const fx=W*((f.x+Math.sin(animT*f.drift+f.ph)*0.05)%1);
+      ctx.fillStyle=`rgba(240,248,255,0.85)`;
+      ctx.beginPath(); ctx.arc(fx,fy,f.r,0,Math.PI*2); ctx.fill();
+    });
+  }
+
+  // ⑨ 번개 (천둥)
+  if(wType==='thunder'){
+    // animT 기반 번개 주기
+    const ltPeriod=4.5;
+    const ltPhase=(animT%ltPeriod)/ltPeriod;
+    if(ltPhase<0.06){
+      const flashStrength=(0.06-ltPhase)/0.06;
+      ctx.fillStyle=`rgba(210,225,255,${flashStrength*0.35})`;
+      ctx.fillRect(0,0,W,H);
+      if(flashStrength>0.6){
+        // 번개 줄기 (animT를 seed로 위치 결정)
+        const lx=W*(0.3+((animT*0.13)%1)*0.4);
+        ctx.strokeStyle=`rgba(255,255,255,${flashStrength*0.9})`;
+        ctx.lineWidth=2; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(lx,0);
+        ctx.lineTo(lx+18,H*0.2); ctx.lineTo(lx-12,H*0.36);
+        ctx.lineTo(lx+14,H*0.52); ctx.stroke();
+      }
+    }
+  }
+
+  // ⑩ 스모그 (오염)
+  const smog=clamp((60-S.clean)/60,0,1)*0.38;
+  if(smog>0.01){
+    const sg=ctx.createRadialGradient(W/2,H*.35,0,W/2,H*.35,W*.75);
+    sg.addColorStop(0,`rgba(80,62,18,${smog})`);
+    sg.addColorStop(1,'transparent');
+    ctx.fillStyle=sg; ctx.fillRect(0,0,W,H);
+  }
+
+  // ⑪ 일출/일몰 노을 오버레이
+  if(hour>=5&&hour<8){
+    const t=(hour>=6?1-(hour-6)/2:0.5);
+    const glow=ctx.createLinearGradient(0,H*0.3,0,H*0.72);
+    glow.addColorStop(0,`rgba(255,140,40,${0.15*t})`);
+    glow.addColorStop(1,`rgba(255,80,20,${0.08*t})`);
+    ctx.fillStyle=glow; ctx.fillRect(0,0,W,H);
+  }
+  if(hour>=18&&hour<21){
+    const t=1-(hour-18)/3;
+    const glow=ctx.createLinearGradient(0,H*0.2,0,H*0.72);
+    glow.addColorStop(0,`rgba(255,100,30,${0.2*t})`);
+    glow.addColorStop(0.5,`rgba(220,60,20,${0.12*t})`);
+    glow.addColorStop(1,'transparent');
+    ctx.fillStyle=glow; ctx.fillRect(0,0,W,H);
+  }
+}
+
+// ── Ground ───────────────────────────────
+function drawGround(){
+  const W=canvas.width,H=canvas.height;
+  const {clean,toilet}=S;
+  const dirt=1-Math.min(clean,toilet)/100;
+
+  // Ground color: rich soil → cracked dark mud
+  const gr=ctx.createLinearGradient(0,H*.72,0,H);
+  gr.addColorStop(0,`rgb(${lerp(28,58,dirt)|0},${lerp(62,34,dirt)|0},${lerp(28,14,dirt)|0})`);
+  gr.addColorStop(1,`rgb(${lerp(18,38,dirt)|0},${lerp(42,22,dirt)|0},${lerp(18,8,dirt)|0})`);
+  ctx.fillStyle=gr;
+  ctx.beginPath();
+  ctx.moveTo(0,H*.75);
+  ctx.bezierCurveTo(W*.3,H*.71,W*.65,H*.73,W,H*.75);
+  ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath(); ctx.fill();
+
+  // Grass blades
+  const blades=16;
+  for(let i=0;i<blades;i++){
+    const bx=W*(i+.5)/blades+Math.sin(i*1.7)*6;
+    const by=H*.75-2;
+    const h=lerp(24,10,dirt)+Math.sin(i*2.3)*4;
+    const wilt=dirt*.65;
+    const sway=Math.sin(animT*.7+i*.6)*3;
+    const r=lerp(55,38,dirt), gg=lerp(148,65,dirt), b2=lerp(38,18,dirt);
+    ctx.strokeStyle=`rgb(${r|0},${gg|0},${b2|0})`;
+    ctx.lineWidth=2.5; ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(bx,by);
+    ctx.quadraticCurveTo(
+      bx+sway+wilt*20*(i%2?1:-1), by-h*.55,
+      bx+sway*1.6+wilt*30*(i%2?1:-1), by-h
+    );
+    ctx.stroke();
+  }
+
+  // Mud puddles / waste (toilet low)
+  const puddle=clamp((60-toilet)/60,0,1);
+  if(puddle>.08){
+    [[.17,.895],[.7,.875],[.43,.93]].forEach(([px,py],idx)=>{
+      if(idx>puddle*3-.3) return;
+      const pr=(20+idx*10)*puddle;
+      const pg=ctx.createRadialGradient(W*px,H*py,0,W*px,H*py,pr);
+      pg.addColorStop(0,`rgba(65,40,8,${.75*puddle})`);
+      pg.addColorStop(.7,`rgba(50,30,5,${.4*puddle})`);
+      pg.addColorStop(1,'transparent');
+      ctx.fillStyle=pg;
+      ctx.beginPath(); ctx.ellipse(W*px,H*py,pr*2.2,pr*.65,0,0,Math.PI*2); ctx.fill();
+      // surface sheen
+      ctx.strokeStyle=`rgba(80,55,15,${.3*puddle})`;
+      ctx.lineWidth=1;
+      ctx.beginPath(); ctx.ellipse(W*px,H*py,pr*1.2,pr*.3,0,0,Math.PI*2); ctx.stroke();
+    });
+  }
+
+  // Cracks in ground when very dry/dirty
+  if(dirt>.55){
+    const crackA=(dirt-.55)/.45*.6;
+    ctx.strokeStyle=`rgba(20,12,5,${crackA})`;
+    ctx.lineWidth=1;
+    [[.25,.85,.35,.9],[.6,.88,.68,.93],[.15,.92,.25,.96],[.72,.83,.78,.89]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(W*x1,H*y1); ctx.lineTo(W*x2,H*y2); ctx.stroke();
+    });
+  }
+}
+
+// ── Branch ───────────────────────────────
+function drawBranch(W,H){
+  const {clean}=S;
+  const bY=H*.615;
+  const dirt=1-clean/100;
+
+  // Branch hue: warm oak → dark rot
+  const br=lerp(118,52,dirt), bg=lerp(72,40,dirt), bb=lerp(32,24,dirt);
+  const col=`rgb(${br|0},${bg|0},${bb|0})`;
+  const dark=`rgb(${(br*.55)|0},${(bg*.55)|0},${(bb*.55)|0})`;
+
+  ctx.lineCap='round'; ctx.lineJoin='round';
+
+  // Shadow under branch
+  ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=18;
+  ctx.beginPath();
+  ctx.moveTo(W*.06,bY+30); ctx.bezierCurveTo(W*.28,bY+12,W*.72,bY+12,W*.94,bY+30);
+  ctx.stroke();
+
+  // Main branch body
+  ctx.strokeStyle=col; ctx.lineWidth=15;
+  ctx.beginPath();
+  ctx.moveTo(W*.06,bY+28); ctx.bezierCurveTo(W*.28,bY+10,W*.72,bY+10,W*.94,bY+28);
+  ctx.stroke();
+
+  // Top highlight
+  ctx.strokeStyle=`rgba(${Math.min(255,(br+40))|0},${Math.min(255,(bg+30))|0},${(bb+15)|0},0.4)`;
+  ctx.lineWidth=4;
+  ctx.beginPath();
+  ctx.moveTo(W*.1,bY+16); ctx.bezierCurveTo(W*.3,bY+4,W*.7,bY+4,W*.9,bY+16);
+  ctx.stroke();
+
+  // Bark texture lines
+  ctx.strokeStyle=`rgba(${(br*.6)|0},${(bg*.6)|0},${(bb*.6)|0},0.55)`;
+  ctx.lineWidth=1.5;
+  [-.28,-.13,.05,.2,.32].forEach((off,i)=>{
+    const bx=W/2+W*off, by=bY+12+Math.sin(off*4)*4;
+    ctx.beginPath(); ctx.moveTo(bx,by-5); ctx.lineTo(bx+(i%2?10:-9),by-16); ctx.stroke();
+  });
+
+  // Lichen / mold patches when dirty
+  if(dirt>.15){
+    const lA=clamp((dirt-.15)/.85,0,1);
+    [[W*.3,bY+6],[W*.55,bY+4],[W*.2,bY+10],[W*.68,bY+8]].forEach(([px,py],i)=>{
+      if(i>lA*4-.2) return;
+      ctx.fillStyle=`rgba(${lerp(70,40,lA)|0},${lerp(90,50,lA)|0},${lerp(30,20,lA)|0},${lA*.7})`;
+      ctx.beginPath(); ctx.ellipse(px,py,12+i*3,5+i,Math.sin(i)*.5,0,Math.PI*2); ctx.fill();
+    });
+  }
+
+  // Small side twigs
+  [[W*.18,bY+8,W*.1,bY-18],[W*.78,bY+10,W*.87,bY-14],[W*.48,bY+5,W*.44,bY-22]].forEach(([x1,y1,x2,y2])=>{
+    ctx.strokeStyle=col; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    // twig tip leaves: green if clean, brown if dirty
+    const lc=lerp(.6,.3,dirt), lg=lerp(.85,.4,dirt), lb=lerp(.25,.15,dirt);
+    ctx.fillStyle=`rgba(${(lc*255)|0},${(lg*255)|0},${(lb*255)|0},${lerp(.9,.5,dirt)})`;
+    ctx.beginPath(); ctx.ellipse(x2,y2,6,3,Math.atan2(y2-y1,x2-x1),0,Math.PI*2); ctx.fill();
+  });
+}
+
+// ── Nest ─────────────────────────────────
+function drawNest(W,H){
+  const {food,clean}=S;
+  const cx=W/2, nY=H*.615-4;
+  const dirt=1-Math.min(clean,food)/100;
+  const hunger=1-food/100;
+
+  const nW=W*.26, nH=nW*.38;
+  // Nest color: warm straw → dark blackened
+  const nr=lerp(168,55,dirt), ng=lerp(128,44,dirt), nb=lerp(58,28,dirt);
+
+  // Nest bowl interior shadow
+  const nShadow=ctx.createRadialGradient(cx,nY+nH*.2,nW*.1,cx,nY+nH*.2,nW);
+  nShadow.addColorStop(0,`rgba(${(nr*.3)|0},${(ng*.3)|0},${(nb*.3)|0},0.9)`);
+  nShadow.addColorStop(1,'transparent');
+  ctx.fillStyle=nShadow;
+  ctx.save(); ctx.beginPath();
+  ctx.ellipse(cx,nY,nW,nH*.9,0,0,Math.PI*2); ctx.clip();
+  ctx.fillRect(cx-nW,nY-nH,nW*2,nH*2); ctx.restore();
+
+  // Woven horizontal strand arcs
+  for(let i=0;i<11;i++){
+    const t=i/10;
+    const ry=nY-nH*.05+nH*.6*t;
+    const rx=nW*Math.sqrt(Math.max(0,1-Math.pow((t-.5)/.6,2)))*1.1;
+    if(rx<2) continue;
+    ctx.strokeStyle=`rgba(${nr|0},${ng|0},${nb|0},${.5+.5*(i%2)})`;
+    ctx.lineWidth=i%2===0?2.5:1.8;
+    ctx.beginPath(); ctx.ellipse(cx,ry,rx,nH*.2,0,Math.PI,Math.PI*2); ctx.stroke();
+  }
+
+  // Vertical weave strands
+  for(let i=-4;i<=4;i++){
+    const bx=cx+i*(nW/4.5);
+    ctx.strokeStyle=`rgba(${(nr*.8)|0},${(ng*.8)|0},${(nb*.8)|0},0.45)`;
+    ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(bx,nY-nH*.08);
+    ctx.bezierCurveTo(bx+i*2.5,nY+nH*.25,bx+i*2,nY+nH*.42,bx,nY+nH*.54);
+    ctx.stroke();
+  }
+
+  // Nest rim
+  ctx.strokeStyle=`rgb(${nr|0},${ng|0},${nb|0})`;
+  ctx.lineWidth=4.5; ctx.lineCap='round';
+  ctx.beginPath(); ctx.ellipse(cx,nY,nW,nH*.27,0,0,Math.PI*2); ctx.stroke();
+
+  // ── Food leaves inside nest ──────────────
+  const leafCount=Math.round(food/25); // 0~4
+  if(leafCount>0){
+    const leafPalette=[
+      [lerp(38,22,hunger),lerp(110,55,hunger),lerp(38,22,hunger)],
+      [lerp(50,28,hunger),lerp(130,60,hunger),lerp(45,24,hunger)],
+      [lerp(32,18,hunger),lerp(95,45,hunger),lerp(32,18,hunger)],
+      [lerp(62,34,hunger),lerp(150,70,hunger),lerp(50,28,hunger)],
+    ];
+    for(let i=0;i<leafCount;i++){
+      const lx=cx-nW*.32+i*(nW*.22)+Math.sin(i*1.3)*4;
+      const ly=nY+nH*.22+Math.cos(i*.8)*3;
+      const [lr,lg2,lb2]=leafPalette[i%4];
+      ctx.save(); ctx.translate(lx,ly); ctx.rotate(-.4+i*.28);
+      ctx.fillStyle=`rgb(${lr|0},${lg2|0},${lb2|0})`;
+      ctx.beginPath(); ctx.ellipse(0,0,8,4.5,0,0,Math.PI*2); ctx.fill();
+      // vein
+      ctx.strokeStyle=`rgba(${(lr*.6)|0},${(lg2*.6)|0},${(lb2*.6)|0},0.6)`;
+      ctx.lineWidth=.8; ctx.beginPath(); ctx.moveTo(-6,0); ctx.lineTo(6,0); ctx.stroke();
+      ctx.restore();
+    }
+  } else {
+    // Empty nest floor - bare dark hollow
+    const eFloor=ctx.createRadialGradient(cx,nY+nH*.3,0,cx,nY+nH*.3,nW*.5);
+    eFloor.addColorStop(0,`rgba(${(nr*.35)|0},${(ng*.28)|0},${(nb*.28)|0},0.9)`);
+    eFloor.addColorStop(1,'transparent');
+    ctx.fillStyle=eFloor;
+    ctx.beginPath(); ctx.ellipse(cx,nY+nH*.28,nW*.55,nH*.22,0,0,Math.PI*2); ctx.fill();
+  }
+}
+
+// ── Mushrooms / berries (snack) ───────────
+function drawSnackIndicator(W,H){
+  const {snack}=S;
+  const count=Math.floor(snack/28)+( snack>85?1:0); // 0~4
+  const fresh=snack/100;
+
+  const spots=[[W*.07,H*.81],[W*.91,H*.82],[W*.14,H*.86],[W*.86,H*.87]];
+  for(let i=0;i<Math.min(count,4);i++){
+    const [mx,my]=spots[i];
+    // stem
+    ctx.fillStyle=`rgba(195,175,148,${.8*fresh+.1})`;
+    ctx.beginPath(); ctx.roundRect(mx-3.5,my-13,7,13,2); ctx.fill();
+    // cap gradient: red/pink when fresh → brown when stale
+    const cr=lerp(155,90,1-fresh), cg=lerp(45,68,1-fresh), cb=lerp(35,28,1-fresh);
+    const capG=ctx.createRadialGradient(mx-3,my-18,0,mx,my-13,13);
+    capG.addColorStop(0,`rgba(${Math.min(255,cr+50)|0},${cg|0},${cb|0},0.95)`);
+    capG.addColorStop(1,`rgb(${cr|0},${cg|0},${cb|0})`);
+    ctx.fillStyle=capG;
+    ctx.beginPath(); ctx.ellipse(mx,my-13,13,8.5,0,Math.PI,Math.PI*2); ctx.fill();
+    // spots
+    ctx.fillStyle=`rgba(255,255,255,${.65*fresh+.1})`;
+    [[0,-4],[5,-8],[-5,-7]].forEach(([sx,sy])=>{
+      ctx.beginPath(); ctx.arc(mx+sx,my+sy,2.2,0,Math.PI*2); ctx.fill();
+    });
+  }
+}
+
+// ── Flowers / buds (health) ───────────────
+function drawFlowers(W,H){
+  const {health}=S;
+  if(health<25) return;
+  const bloom=clamp((health-25)/75,0,1);
+  const bY=H*.615;
+  const count=health>75?3:health>50?2:1;
+
+  const fPos=[[W*.74,bY-28],[W*.23,bY-22],[W*.84,H*.76]];
+  const pColors=[['#ffb3c6','#ff85a1'],['#c8f0b0','#90d060'],['#b3d9ff','#80bfff']];
+  const petals6=[[0,-1],[.87,-.5],[.87,.5],[0,1],[-.87,.5],[-.87,-.5]];
+
+  for(let i=0;i<count;i++){
+    const [fx,fy]=fPos[i];
+    const sz=lerp(0,9,bloom);
+    const wilt=1-bloom;
+
+    // Stem
+    ctx.strokeStyle=`rgba(55,115,45,${bloom*.85+.1})`;
+    ctx.lineWidth=2; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(fx,fy+sz*1.5); ctx.lineTo(fx+wilt*8,fy+sz*1.5+20); ctx.stroke();
+
+    if(sz<1.5) continue;
+
+    // Petals
+    ctx.globalAlpha=bloom*.88;
+    petals6.forEach(([px,py])=>{
+      const [c1,c2]=pColors[i];
+      ctx.fillStyle=i%2===0?c1:c2;
+      ctx.beginPath();
+      ctx.ellipse(fx+px*sz*1.5,fy+py*sz*1.5,sz*.85,sz*.45,Math.atan2(py,px),0,Math.PI*2);
+      ctx.fill();
+    });
+    ctx.globalAlpha=1;
+
+    // Center
+    ctx.fillStyle=health>60?'#ffe050':'#cc9020';
+    ctx.beginPath(); ctx.arc(fx,fy,sz*.62,0,Math.PI*2); ctx.fill();
+  }
+}
+
+// ── Fireflies (snack+health good) ──────────
+const FFly=Array.from({length:7},(_,i)=>({
+  ox:.1+(i/7)*.8, oy:.18+Math.random()*.42,
+  ph:Math.random()*Math.PI*2, spd:.3+Math.random()*.4,
+}));
+function drawFireflies(W,H){
+  const show=(S.snack+S.health)/200;
+  if(show<.5) return;
+  const alpha=clamp((show-.5)*2.2,0,1)*.85;
+  FFly.forEach(f=>{
+    const glow=.4+.6*Math.sin(animT*f.spd*2.2+f.ph);
+    const fx=W*(f.ox+.07*Math.sin(animT*f.spd+f.ph));
+    const fy=H*(f.oy+.05*Math.cos(animT*f.spd*1.4+f.ph));
+    const fg=ctx.createRadialGradient(fx,fy,0,fx,fy,8);
+    fg.addColorStop(0,`rgba(190,255,140,${alpha*glow})`);
+    fg.addColorStop(1,'transparent');
+    ctx.fillStyle=fg; ctx.beginPath(); ctx.arc(fx,fy,8,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=`rgba(220,255,170,${alpha*glow*.9})`;
+    ctx.beginPath(); ctx.arc(fx,fy,1.8,0,Math.PI*2); ctx.fill();
+  });
+}
+
+// ── Sick aura ────────────────────────────
+function drawSickAura(W,H){
+  const {health}=S;
+  if(health>62) return;
+  const t=clamp((62-health)/62,0,1);
+
+  // Dark red vignette
+  const vig=ctx.createRadialGradient(W/2,H/2,H*.05,W/2,H/2,H*.85);
+  vig.addColorStop(0,'transparent');
+  vig.addColorStop(1,`rgba(60,0,0,${t*.6})`);
+  ctx.fillStyle=vig; ctx.fillRect(0,0,W,H);
+
+  // Sickly green ground mist
+  if(t>.25){
+    const mist=ctx.createLinearGradient(0,H*.68,0,H);
+    mist.addColorStop(0,'transparent');
+    mist.addColorStop(1,`rgba(35,55,8,${(t-.25)*.55})`);
+    ctx.fillStyle=mist; ctx.fillRect(0,H*.68,W,H*.32);
+  }
+
+  // Pulsing warning rings
+  if(health<30){
+    const pulse=.5+.5*Math.sin(animT*3);
+    ctx.strokeStyle=`rgba(200,20,20,${pulse*.35*t})`;
+    ctx.lineWidth=3;
+    ctx.beginPath(); ctx.roundRect(4,4,W-8,H-8,8); ctx.stroke();
+  }
+}
+
+// ── MAIN DRAW ────────────────────────────
+function drawScene(){
+  const W=canvas.width,H=canvas.height;
+  if(!W||!H) return;
+  ctx.clearRect(0,0,W,H);
+  drawSky();
+  drawGround();
+  drawBranch(W,H);
+  drawNest(W,H);
+  drawSnackIndicator(W,H);
+  drawFlowers(W,H);
+  drawFireflies(W,H);
+  drawSickAura(W,H);
+}
+
+// ═══════════════════════════════════════
+//  GAME LOGIC
+// ═══════════════════════════════════════
+function daysSince(){ return (Date.now()-S.bornAt)/86400000; }
+
+function checkStage(){
+  const d=daysSince(), thresh=[1,4,7];
+  if(S.stage<3&&d>=thresh[S.stage]&&S.health>20){
+    S.stage++;
+    showToast('🎉 '+st().name+' 단계가 됐어요!');
+    S.message=rand(S.stage===3?MSG.butterfly:MSG.happy);
+  }
+}
+
+function tick(){
+  const now=Date.now(), m=(now-S.lastTick)/60000; S.lastTick=now;
+  if(!S.sleeping){
+    S.food=clamp(S.food-DRAIN.food*m); S.clean=clamp(S.clean-DRAIN.clean*m);
+    S.toilet=clamp(S.toilet-DRAIN.toilet*m); S.snack=clamp(S.snack-DRAIN.snack*m);
+  }
+  // happiness drains slowly; boosted by snack+play, hurt by bad conditions
+  let happyDrain=0.4*m;
+  if(S.food<30||S.clean<30||S.toilet<30) happyDrain+=0.5*m;
+  if(S.snack>60) happyDrain-=0.2*m;
+  S.happy=clamp(S.happy-(S.sleeping?0:happyDrain));
+
+  let pen=0;
+  if(S.food<20)pen+=.5; if(S.clean<20)pen+=.3; if(S.toilet<20)pen+=.4; if(S.snack<10)pen+=.1;
+  if(S.happy<20)pen+=.2;
+  if(!S.sleeping)pen*=m;
+  S.health=clamp(S.health+(S.food>60&&S.clean>60&&S.toilet>60&&!S.sleeping?.1*m:-pen));
+  checkStage(); if(!qMsgTimer) pickMsg(); render();
+}
+
+function pickMsg(){
+  if(qMsgTimer) return;
+  if(S.health<30){S.message=rand(MSG.sick);return;}
+  if(S.food<25){S.message=rand(MSG.hungry);return;}
+  if(S.toilet<25){S.message=rand(MSG.toilet);return;}
+  if(S.clean<25){S.message=rand(MSG.dirty);return;}
+  if(S.happy<25){S.message=rand(MSG.sad);return;}
+  if(S.snack<15){S.message=rand(MSG.nosnack);return;}
+  if(S.stage===3){S.message=rand(MSG.butterfly);return;}
+  if(S.stage===2){S.message=rand(MSG.cocoon);return;}
+  S.message=rand(MSG.happy);
+}
+
+const ACTIONS={
+  food:()=>{ if(S.food>=95){showToast(rand(FULLMSG.food));return;} S.food=clamp(S.food+30);showToast('🌡️ 따뜻해졌어요!'); },
+  clean:()=>{ if(S.clean>=95){showToast(rand(FULLMSG.clean));return;} S.clean=clamp(S.clean+35);showToast('🍃 주변이 깔끔해요!'); },
+  toilet:()=>{ if(S.toilet>=95){showToast(rand(FULLMSG.toilet));return;} S.toilet=clamp(S.toilet+40);showToast('🌬️ 공기가 맑아요!'); },
+  snack:()=>{ if(S.snack>=95){showToast(rand(FULLMSG.snack));return;} S.snack=clamp(S.snack+50);S.health=clamp(S.health+5);S.happy=clamp(S.happy+15);showToast('🍬 최고예요!'); },
+  sleep:()=>{ S.sleeping=!S.sleeping;showToast(S.sleeping?'😴 쿨쿨...':'😊 일어났어요!'); },
+  play:()=>{ S.health=clamp(S.health+3);S.food=clamp(S.food-5);S.happy=clamp(S.happy+20);showToast('🎮 즐거워요!'); },
+};
+function doAction(type){
+  const now=Date.now(),cd=CD[type]||0,last=S.cooldowns[type]||0;
+  if(now-last<cd){showToast(`⏳ ${Math.ceil((cd-(now-last))/1000)}초 후에 다시 해줘요!`);return;}
+  S.cooldowns[type]=now; ACTIONS[type]?.(); if(!qMsgTimer) pickMsg(); render();
+}
+
+// ═══════════════════════════════════════
+//  DOM RENDER
+// ═══════════════════════════════════════
+function render(){
+  const now=new Date(), p=n=>String(n).padStart(2,'0');
+  document.getElementById('datetime').textContent=
+    `📅 ${now.getFullYear()}.${p(now.getMonth()+1)}.${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
+  document.getElementById('stage-badge').textContent=st().emoji+' '+st().name;
+  document.getElementById('pet-emoji').textContent=st().emoji;
+  document.getElementById('pet-container').classList.toggle('pet-sick',S.health<30);
+  document.getElementById('speech-bubble').textContent=S.sleeping?'💤 쿨쿨쿨쿨...':S.message;
+
+  ['food','clean','toilet','snack'].forEach(k=>{
+    const el=document.getElementById('b-'+k);
+    el.style.width=S[k]+'%';
+    el.style.boxShadow=S[k]<20?'0 0 8px rgba(233,69,96,.8)':'none';
+  });
+  document.getElementById('health-fill').style.width=S.health+'%';
+  document.getElementById('health-val').textContent=Math.round(S.health)+'%';
+  document.getElementById('happy-fill').style.width=S.happy+'%';
+  document.getElementById('happy-val').textContent=Math.round(S.happy)+'%';
+
+  const now2=Date.now();
+  ['food','clean','toilet','snack','sleep','play'].forEach(b=>{
+    const btn=document.getElementById('btn-'+b);
+    const rem=(CD[b]||0)-(now2-(S.cooldowns[b]||0));
+    if(rem>0){btn.classList.add('cooling');btn.setAttribute('data-cd',Math.ceil(rem/1000)+'s');}
+    else{btn.classList.remove('cooling');btn.removeAttribute('data-cd');}
+  });
+  document.querySelector('#btn-sleep .btn-label').textContent=S.sleeping?'깨우기':'재워주기';
+  document.querySelector('#btn-sleep .btn-icon').textContent=S.sleeping?'☀️':'😴';
+  updatePetInfo();
+}
+
+// ═══════════════════════════════════════
+//  WEATHER (IP 기반 자동 위치 감지)
+// ═══════════════════════════════════════
+const WMO={0:'맑음',1:'대체로맑음',2:'구름조금',3:'흐림',
+  45:'안개',48:'안개',51:'이슬비',53:'이슬비',55:'이슬비',
+  61:'비',63:'비',65:'폭우',71:'눈',73:'눈',75:'폭설',
+  80:'소나기',81:'소나기',82:'강한소나기',95:'뇌우',96:'뇌우',99:'뇌우'};
+const WIC={0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',48:'🌫',
+  51:'🌦',53:'🌦',55:'🌧',61:'🌧',63:'🌧',65:'🌧',
+  71:'🌨',73:'🌨',75:'❄️',80:'🌦',81:'🌧',82:'⛈',95:'⛈',96:'⛈',99:'⛈'};
+
+let weatherCache={lat:37.5665,lon:126.9780,city:'서울'};
+// 실시간 날씨/시간 배경용 상태
+let weatherScene={
+  code:0,       // WMO 날씨코드
+  temp:15,      // 기온
+  ready:false,  // 날씨 데이터 수신 여부
+};
+
+// IP→위치: ipinfo.io (✅ 작동 확인), fallback: geolocation-db.com (✅ 작동 확인)
+async function getLocationByIP(){
+  try{
+    const r=await fetch('https://ipinfo.io/json');
+    const d=await r.json();
+    if(d.loc){
+      const [lat,lon]=d.loc.split(',').map(Number);
+      return {lat, lon, city:'현재위치'};
+    }
+  }catch(_){}
+  try{
+    const r=await fetch('https://geolocation-db.com/json/');
+    const d=await r.json();
+    if(d.latitude && d.longitude){
+      return {lat:d.latitude, lon:d.longitude, city:'현재위치'};
+    }
+  }catch(_){}
+  return {lat:37.5665, lon:126.9780, city:'서울'};
+}
+
+// 2단계: 위경도로 날씨 가져오기
+async function fetchWeatherByCoord(lat, lon, city){
+  try{
+    const wUrl=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul`;
+    const wRes=await fetch(wUrl);
+    const wData=await wRes.json();
+    const c=wData.current;
+    const code=c.weathercode;
+    const temp=Math.round(c.temperature_2m);
+    const wind=Math.round(c.windspeed_10m*10)/10;
+    const sky=WMO[code]??'--';
+    const icon=WIC[code]??'🌡';
+    // 배경 씬 업데이트
+    weatherScene.code=code; weatherScene.temp=temp; weatherScene.ready=true;
+
+    let dustLabel='--';
+    try{
+      const aRes=await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10&timezone=Asia%2FSeoul`);
+      const aData=await aRes.json();
+      const pm10=Math.round(aData.current.pm10);
+      dustLabel=pm10>150?'매우나쁨':pm10>80?'나쁨':pm10>30?'보통':'좋음';
+    }catch(_){}
+
+    document.getElementById('weather-info').textContent=
+      `${city==='서울'?'서울 ':'📍'}${icon}${sky} ${temp}°C 💨${wind}m/s 🌫미세:${dustLabel}`;
+  }catch(e){
+    document.getElementById('weather-info').textContent='날씨 정보 없음';
+  }
+}
+
+async function initWeather(){
+  document.getElementById('weather-info').textContent='위치 감지 중...';
+  const loc = await getLocationByIP();
+  weatherCache = loc;
+  await fetchWeatherByCoord(loc.lat, loc.lon, loc.city);
+}
+
+async function refreshWeather(){
+  const icon = document.getElementById('loc-btn-icon');
+  const label = document.getElementById('loc-btn-label');
+  icon.classList.add('spinning');
+  label.textContent='갱신중...';
+  const loc = await getLocationByIP();
+  weatherCache = loc;
+  await fetchWeatherByCoord(loc.lat, loc.lon, loc.city);
+  icon.classList.remove('spinning');
+  label.textContent='날씨갱신';
+  showToast('📍 '+loc.city+' 날씨로 업데이트했어요!');
+}
+
+
+let toastTimer;
+
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+// ═══════════════════════════════════════
+//  ANIMATION LOOP
+// ═══════════════════════════════════════
+function loop(ts){ animT=ts/1000; drawScene(); requestAnimationFrame(loop); }
+
+window.addEventListener('resize',resizeCanvas);
+resizeCanvas(); render();
+requestAnimationFrame(loop);
+setInterval(tick,2000);
+setInterval(render,1000);
+setInterval(()=>{ if(qMsgTimer==null&&S.health>=30&&S.food>=25&&S.clean>=25&&S.toilet>=25){pickMsg();render();} },15000);
+
+// 날씨 갱신 버튼
+document.getElementById('loc-btn').addEventListener('click', refreshWeather);
+
+initWeather();
+setInterval(()=>fetchWeatherByCoord(weatherCache.lat,weatherCache.lon,weatherCache.city),600000);
+</script>
+</body>
+</html>
