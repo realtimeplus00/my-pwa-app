@@ -1,6 +1,6 @@
 {
-  "name": "🦋 나비 키우기",
-  "short_name": "🦋 나비 키우기",
+  "name": "나비 키우기",
+  "short_name": "나비 키우기",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
