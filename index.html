@@ -392,6 +392,7 @@ function goPage(n){
       resizeCanvas();
       updatePetInfo();
       render();
+      saveState();
     },50);
   }
 }
@@ -453,7 +454,100 @@ const FULLMSG={
   toilet:['공기가 맑아요~ 감사해요! 🌬️','이미 청정해요, 고마워요! 😄','공기는 걱정 없어요, 감사! 🌸'],
   snack:['간식은 충분해요~ 고마워요! 🍬','배가 너무 부를 것 같아요, 감사해요! 😋','이미 달콤해요! 감사합니다 🍭'],
 };
-let S={stage:0,bornAt:Date.now(),bornDate:null,food:100,clean:100,toilet:100,snack:100,health:100,happy:100,lastTick:Date.now(),cooldowns:{},message:MSG.happy[0],sleeping:false};
+// ═══════════════════════════════════════
+//  SAVE / LOAD (localStorage)
+// ═══════════════════════════════════════
+const SAVE_KEY='silkworm_state_v1';
+const USER_KEY='silkworm_user_v1';
+
+function saveState(){
+  try{
+    localStorage.setItem(SAVE_KEY, JSON.stringify(S));
+    localStorage.setItem(USER_KEY, JSON.stringify({userNickname,userPetname}));
+  }catch(_){}
+}
+
+function loadState(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(_){ return null; }
+}
+
+function applyOfflineTime(saved){
+  // 앱이 꺼져 있던 동안 경과한 시간(분) 계산
+  const now=Date.now();
+  const lastTick=saved.lastTick||now;
+  const offlineMs=Math.max(0, now-lastTick);
+  const offlineMin=offlineMs/60000;
+
+  // 최대 72시간까지만 적용 (무한 패널티 방지)
+  const cappedMin=Math.min(offlineMin, 72*60);
+
+  if(cappedMin<0.5) return saved; // 30초 미만이면 무시
+
+  const d=Object.assign({},saved);
+
+  if(!d.sleeping){
+    d.food  =clamp(d.food  -DRAIN.food  *cappedMin);
+    d.clean =clamp(d.clean -DRAIN.clean *cappedMin);
+    d.toilet=clamp(d.toilet-DRAIN.toilet*cappedMin);
+    d.snack =clamp(d.snack -DRAIN.snack *cappedMin);
+
+    let happyDrain=0.4*cappedMin;
+    if(d.food<30||d.clean<30||d.toilet<30) happyDrain+=0.5*cappedMin;
+    if(d.snack>60) happyDrain-=0.2*cappedMin;
+    d.happy=clamp(d.happy-happyDrain);
+
+    let pen=0;
+    if(d.food<20)pen+=.5; if(d.clean<20)pen+=.3;
+    if(d.toilet<20)pen+=.4; if(d.snack<10)pen+=.1;
+    if(d.happy<20)pen+=.2;
+    pen*=cappedMin;
+    const recovering=d.food>60&&d.clean>60&&d.toilet>60;
+    d.health=clamp(d.health+(recovering?.1*cappedMin:-pen));
+  }
+
+  d.lastTick=now;
+  return d;
+}
+
+// 저장된 상태 불러오기 시도
+const _saved=loadState();
+const _defaultS={stage:0,bornAt:Date.now(),bornDate:null,food:100,clean:100,toilet:100,snack:100,health:100,happy:100,lastTick:Date.now(),cooldowns:{},message:MSG.happy[0],sleeping:false};
+
+let S;
+if(_saved){
+  S=applyOfflineTime(_saved);
+  // 유저 정보 복원
+  try{
+    const u=JSON.parse(localStorage.getItem(USER_KEY)||'{}');
+    if(u.userNickname) userNickname=u.userNickname;
+    if(u.userPetname)  userPetname =u.userPetname;
+  }catch(_){}
+} else {
+  S=_defaultS;
+}
+
+// 주기적 자동 저장 (5초마다)
+setInterval(saveState, 5000);
+
+// 저장된 상태가 있으면 자동으로 게임 화면으로 이동
+if(_saved){
+  const _offlineMs=Math.max(0,(Date.now()-(_saved.lastTick||Date.now())));
+  const _offlineMin=Math.round(_offlineMs/60000);
+  setTimeout(()=>{
+    if(userNickname) document.getElementById('input-nickname').value=userNickname;
+    if(userPetname)  document.getElementById('input-petname').value=userPetname;
+    goPage(3);
+    if(_offlineMin>=1){
+      const h=Math.floor(_offlineMin/60), m=_offlineMin%60;
+      const timeStr=h>0?`${h}시간 ${m}분`:`${m}분`;
+      setTimeout(()=>showToast(`⏰ ${timeStr} 동안 자리를 비웠어요! 상태를 확인해봐요~`),600);
+    }
+  },100);
+}
 const QMSG=[
   ['어제는 조용히 실을 뽑았어요~ 🧵','어제는 잎사귀를 잔뜩 먹었어요! 😋','어제는 낮잠을 자면서 쉬었답니다 💤','어제는 네가 보고 싶었어요 🥺'],
   ['네가 놀러 와줬잖아요! 그게 제일 좋아요 🥰','오늘 잎이 특히 신선했어요! 🍃','햇살이 따뜻해서 기분이 좋았어요 ☀️','딱히 없었지만 네가 있으니까 좋아요 💚'],
@@ -1135,7 +1229,7 @@ function tick(){
   if(S.happy<20)pen+=.2;
   if(!S.sleeping)pen*=m;
   S.health=clamp(S.health+(S.food>60&&S.clean>60&&S.toilet>60&&!S.sleeping?.1*m:-pen));
-  checkStage(); if(!qMsgTimer) pickMsg(); render();
+  checkStage(); if(!qMsgTimer) pickMsg(); render(); saveState();
 }
 
 function pickMsg(){
