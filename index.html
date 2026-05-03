@@ -37,10 +37,10 @@
   #stage-badge{ background:var(--accent); color:#fff; font-family:'Jua',cursive; font-size:13px; padding:3px 12px; border-radius:20px; }
   #weather-info{ font-family:'Jua',cursive; font-size:13px; color:#93c5fd; letter-spacing:.5px; flex:1; }
   #weather-label{ font-family:'Jua',cursive; font-size:13px; color:var(--gray); margin-right:4px; }
-  #loc-wrap{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  #loc-wrap{ display:flex; align-items:center; gap:2px; flex-shrink:0; }
   #loc-btn{
     display:flex; flex-direction:column; align-items:center; gap:1px; cursor:pointer;
-    background:none; border:none; padding:4px 6px;
+    background:none; border:none; padding:4px 4px;
     -webkit-tap-highlight-color:rgba(0,0,0,0);
     touch-action:manipulation;
   }
@@ -51,6 +51,27 @@
   #loc-btn-icon.spinning{ animation:spin 0.7s linear; }
   @keyframes spin{ from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   #loc-btn-label{ font-family:'Jua',cursive; font-size:10px; color:var(--gray); white-space:nowrap; pointer-events:none; }
+
+  #save-indicator{
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    padding:4px 6px; flex-shrink:0;
+  }
+  #save-led{
+    width:11px; height:11px; border-radius:50%;
+    background:#4ecca3;
+    box-shadow:0 0 6px rgba(78,204,163,.9);
+    flex-shrink:0;
+    transition:background .2s, box-shadow .2s;
+  }
+  #save-led.saving{
+    background:#e94560;
+    box-shadow:0 0 8px rgba(233,69,96,1);
+    animation:led-blink .4s ease-in-out;
+  }
+  @keyframes led-blink{
+    0%{opacity:1} 40%{opacity:.15} 70%{opacity:1} 100%{opacity:1}
+  }
+  #save-led-label{ font-family:'Jua',cursive; font-size:10px; color:var(--gray); white-space:nowrap; }
 
   #top{
     flex:1; position:relative; overflow:hidden;
@@ -315,8 +336,12 @@
     <div id="loc-wrap">
       <button id="loc-btn" type="button">
         <span id="loc-btn-icon">🔄</span>
-        <span id="loc-btn-label">날씨갱신</span>
+        <span id="loc-btn-label">위치반영</span>
       </button>
+      <div id="save-indicator">
+        <div id="save-led"></div>
+        <span id="save-led-label">저장상태</span>
+      </div>
     </div>
   </div>
   <div id="header-petinfo">
@@ -324,6 +349,10 @@
     <span>·</span>
     <span>태어난 날 : <span id="petinfo-born">--</span></span>
     <span id="petinfo-days" style="color:var(--green)"></span>
+    <span>·</span>
+    <span>찾아온 날 : <span id="petinfo-visits" style="color:var(--purple)">--</span></span>
+    <span>·</span>
+    <span>📍<span id="petinfo-loc" style="color:#93c5fd">--</span></span>
   </div>
 </div>
 
@@ -382,6 +411,7 @@
 //  페이지 관리
 // ═══════════════════════════════════════
 let userNickname='', userPetname='';
+let S; // STATE - initState()에서 초기화됨
 
 function goPage(n){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -421,8 +451,10 @@ function updatePetInfo(){
   const nameEl=document.getElementById('petinfo-name');
   const bornEl=document.getElementById('petinfo-born');
   const daysEl=document.getElementById('petinfo-days');
+  const visitsEl=document.getElementById('petinfo-visits');
   if(!nameEl) return;
   nameEl.textContent=userPetname||'--';
+  if(visitsEl) visitsEl.textContent=getVisitCount()+'일';
   if(!S.bornDate){ bornEl.textContent='--'; daysEl.textContent=''; return; }
   const born=new Date(S.bornDate);
   const p=n=>String(n).padStart(2,'0');
@@ -432,7 +464,7 @@ function updatePetInfo(){
 }
 
 // ═══════════════════════════════════════
-//  STATE
+//  STATE & 유틸리티
 // ═══════════════════════════════════════
 const STAGES=[{name:'알',emoji:'🥚'},{name:'애벌레',emoji:'🐛'},{name:'누에고치',emoji:'🫘'},{name:'나비',emoji:'🦋'}];
 const DRAIN={food:1.5,clean:0.8,toilet:1.2,snack:0.6};
@@ -454,16 +486,52 @@ const FULLMSG={
   toilet:['공기가 맑아요~ 감사해요! 🌬️','이미 청정해요, 고마워요! 😄','공기는 걱정 없어요, 감사! 🌸'],
   snack:['간식은 충분해요~ 고마워요! 🍬','배가 너무 부를 것 같아요, 감사해요! 😋','이미 달콤해요! 감사합니다 🍭'],
 };
+
+// ── 유틸 (저장/불러오기보다 먼저 선언) ──
+const rand=a=>a[Math.floor(Math.random()*a.length)];
+const clamp=(v,lo=0,hi=100)=>Math.max(lo,Math.min(hi,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const st=()=>STAGES[S.stage];
+
 // ═══════════════════════════════════════
 //  SAVE / LOAD (localStorage)
 // ═══════════════════════════════════════
 const SAVE_KEY='silkworm_state_v1';
 const USER_KEY='silkworm_user_v1';
+const VISIT_KEY='silkworm_visits_v1';
+
+// ── 방문 횟수 관리 ──
+function recordVisit(){
+  // 오늘 날짜 문자열 (YYYY-MM-DD)
+  const today=new Date();
+  const dateStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  try{
+    const raw=localStorage.getItem(VISIT_KEY);
+    const visits=raw?JSON.parse(raw):[];
+    // 오늘이 이미 기록되어 있으면 추가 안 함
+    if(!visits.includes(dateStr)) visits.push(dateStr);
+    localStorage.setItem(VISIT_KEY,JSON.stringify(visits));
+  }catch(_){}
+}
+
+function getVisitCount(){
+  try{
+    const raw=localStorage.getItem(VISIT_KEY);
+    if(!raw) return 0;
+    return JSON.parse(raw).length;
+  }catch(_){ return 0; }
+}
 
 function saveState(){
   try{
-    localStorage.setItem(SAVE_KEY, JSON.stringify(S));
-    localStorage.setItem(USER_KEY, JSON.stringify({userNickname,userPetname}));
+    localStorage.setItem(SAVE_KEY,JSON.stringify(S));
+    localStorage.setItem(USER_KEY,JSON.stringify({userNickname,userPetname}));
+    // 저장 표시등 깜빡임
+    const led=document.getElementById('save-led');
+    if(led){
+      led.classList.add('saving');
+      setTimeout(()=>led.classList.remove('saving'),500);
+    }
   }catch(_){}
 }
 
@@ -476,78 +544,60 @@ function loadState(){
 }
 
 function applyOfflineTime(saved){
-  // 앱이 꺼져 있던 동안 경과한 시간(분) 계산
   const now=Date.now();
-  const lastTick=saved.lastTick||now;
-  const offlineMs=Math.max(0, now-lastTick);
-  const offlineMin=offlineMs/60000;
+  const offlineMs=Math.max(0, now-(saved.lastTick||now));
+  const offlineMin=Math.min(offlineMs/60000, 72*60); // 최대 72시간 캡
+  if(offlineMin<0.5) return saved;                   // 30초 미만 무시
 
-  // 최대 72시간까지만 적용 (무한 패널티 방지)
-  const cappedMin=Math.min(offlineMin, 72*60);
-
-  if(cappedMin<0.5) return saved; // 30초 미만이면 무시
-
-  const d=Object.assign({},saved);
-
+  const d=Object.assign({},saved, {cooldowns:Object.assign({},saved.cooldowns)});
   if(!d.sleeping){
-    d.food  =clamp(d.food  -DRAIN.food  *cappedMin);
-    d.clean =clamp(d.clean -DRAIN.clean *cappedMin);
-    d.toilet=clamp(d.toilet-DRAIN.toilet*cappedMin);
-    d.snack =clamp(d.snack -DRAIN.snack *cappedMin);
-
-    let happyDrain=0.4*cappedMin;
-    if(d.food<30||d.clean<30||d.toilet<30) happyDrain+=0.5*cappedMin;
-    if(d.snack>60) happyDrain-=0.2*cappedMin;
-    d.happy=clamp(d.happy-happyDrain);
-
+    d.food  =clamp(d.food  -DRAIN.food  *offlineMin);
+    d.clean =clamp(d.clean -DRAIN.clean *offlineMin);
+    d.toilet=clamp(d.toilet-DRAIN.toilet*offlineMin);
+    d.snack =clamp(d.snack -DRAIN.snack *offlineMin);
+    let hd=0.4*offlineMin;
+    if(d.food<30||d.clean<30||d.toilet<30) hd+=0.5*offlineMin;
+    if(d.snack>60) hd-=0.2*offlineMin;
+    d.happy=clamp(d.happy-hd);
     let pen=0;
     if(d.food<20)pen+=.5; if(d.clean<20)pen+=.3;
     if(d.toilet<20)pen+=.4; if(d.snack<10)pen+=.1;
     if(d.happy<20)pen+=.2;
-    pen*=cappedMin;
-    const recovering=d.food>60&&d.clean>60&&d.toilet>60;
-    d.health=clamp(d.health+(recovering?.1*cappedMin:-pen));
+    pen*=offlineMin;
+    const ok=d.food>60&&d.clean>60&&d.toilet>60;
+    d.health=clamp(d.health+(ok?.1*offlineMin:-pen));
   }
-
   d.lastTick=now;
   return d;
 }
 
-// 저장된 상태 불러오기 시도
-const _saved=loadState();
-const _defaultS={stage:0,bornAt:Date.now(),bornDate:null,food:100,clean:100,toilet:100,snack:100,health:100,happy:100,lastTick:Date.now(),cooldowns:{},message:MSG.happy[0],sleeping:false};
+// ── 저장 데이터 불러오기 및 S 초기화 ──
+(function initState(){
+  const saved=loadState();
+  const defaultS={
+    stage:0,bornAt:Date.now(),bornDate:null,
+    food:100,clean:100,toilet:100,snack:100,
+    health:100,happy:100,lastTick:Date.now(),
+    cooldowns:{},message:MSG.happy[0],sleeping:false
+  };
+  if(saved){
+    S=applyOfflineTime(saved);
+    try{
+      const u=JSON.parse(localStorage.getItem(USER_KEY)||'{}');
+      if(u.userNickname) userNickname=u.userNickname;
+      if(u.userPetname)  userPetname =u.userPetname;
+    }catch(_){}
+  } else {
+    S=defaultS;
+  }
+})();
 
-let S;
-if(_saved){
-  S=applyOfflineTime(_saved);
-  // 유저 정보 복원
-  try{
-    const u=JSON.parse(localStorage.getItem(USER_KEY)||'{}');
-    if(u.userNickname) userNickname=u.userNickname;
-    if(u.userPetname)  userPetname =u.userPetname;
-  }catch(_){}
-} else {
-  S=_defaultS;
-}
+// 오늘 방문 기록
+recordVisit();
 
-// 주기적 자동 저장 (5초마다)
-setInterval(saveState, 5000);
+// ── 자동 저장 (tick마다 + 5초 주기) ──
+setInterval(saveState,5000);
 
-// 저장된 상태가 있으면 자동으로 게임 화면으로 이동
-if(_saved){
-  const _offlineMs=Math.max(0,(Date.now()-(_saved.lastTick||Date.now())));
-  const _offlineMin=Math.round(_offlineMs/60000);
-  setTimeout(()=>{
-    if(userNickname) document.getElementById('input-nickname').value=userNickname;
-    if(userPetname)  document.getElementById('input-petname').value=userPetname;
-    goPage(3);
-    if(_offlineMin>=1){
-      const h=Math.floor(_offlineMin/60), m=_offlineMin%60;
-      const timeStr=h>0?`${h}시간 ${m}분`:`${m}분`;
-      setTimeout(()=>showToast(`⏰ ${timeStr} 동안 자리를 비웠어요! 상태를 확인해봐요~`),600);
-    }
-  },100);
-}
 const QMSG=[
   ['어제는 조용히 실을 뽑았어요~ 🧵','어제는 잎사귀를 잔뜩 먹었어요! 😋','어제는 낮잠을 자면서 쉬었답니다 💤','어제는 네가 보고 싶었어요 🥺'],
   ['네가 놀러 와줬잖아요! 그게 제일 좋아요 🥰','오늘 잎이 특히 신선했어요! 🍃','햇살이 따뜻해서 기분이 좋았어요 ☀️','딱히 없었지만 네가 있으니까 좋아요 💚'],
@@ -562,11 +612,6 @@ function askQ(idx){
   clearTimeout(qMsgTimer);
   qMsgTimer=setTimeout(()=>{ qMsgTimer=null; pickMsg(); render(); },6000);
 }
-
-const rand=a=>a[Math.floor(Math.random()*a.length)];
-const clamp=(v,lo=0,hi=100)=>Math.max(lo,Math.min(hi,v));
-const lerp=(a,b,t)=>a+(b-a)*t;
-const st=()=>STAGES[S.stage];
 
 // ═══════════════════════════════════════
 //  CANVAS SCENE
@@ -1294,7 +1339,7 @@ function render(){
 }
 
 // ═══════════════════════════════════════
-//  WEATHER (IP 기반 자동 위치 감지)
+//  WEATHER (GPS 우선 → IP fallback)
 // ═══════════════════════════════════════
 const WMO={0:'맑음',1:'대체로맑음',2:'구름조금',3:'흐림',
   45:'안개',48:'안개',51:'이슬비',53:'이슬비',55:'이슬비',
@@ -1304,35 +1349,54 @@ const WIC={0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',48:'🌫',
   51:'🌦',53:'🌦',55:'🌧',61:'🌧',63:'🌧',65:'🌧',
   71:'🌨',73:'🌨',75:'❄️',80:'🌦',81:'🌧',82:'⛈',95:'⛈',96:'⛈',99:'⛈'};
 
-let weatherCache={lat:37.5665,lon:126.9780,city:'서울'};
-// 실시간 날씨/시간 배경용 상태
-let weatherScene={
-  code:0,       // WMO 날씨코드
-  temp:15,      // 기온
-  ready:false,  // 날씨 데이터 수신 여부
-};
+const LOC_CACHE_KEY='silkworm_loc_v1';
 
-// IP→위치: ipinfo.io (✅ 작동 확인), fallback: geolocation-db.com (✅ 작동 확인)
-async function getLocationByIP(){
+// 마지막으로 성공한 위치 불러오기
+function loadCachedLoc(){
   try{
-    const r=await fetch('https://ipinfo.io/json');
-    const d=await r.json();
-    if(d.loc){
-      const [lat,lon]=d.loc.split(',').map(Number);
-      return {lat, lon, city:'현재위치'};
-    }
-  }catch(_){}
-  try{
-    const r=await fetch('https://geolocation-db.com/json/');
-    const d=await r.json();
-    if(d.latitude && d.longitude){
-      return {lat:d.latitude, lon:d.longitude, city:'현재위치'};
-    }
-  }catch(_){}
-  return {lat:37.5665, lon:126.9780, city:'서울'};
+    const raw=localStorage.getItem(LOC_CACHE_KEY);
+    return raw?JSON.parse(raw):null;
+  }catch(_){return null;}
+}
+function saveCachedLoc(loc){
+  try{ localStorage.setItem(LOC_CACHE_KEY,JSON.stringify(loc)); }catch(_){}
 }
 
-// 2단계: 위경도로 날씨 가져오기
+let weatherCache = loadCachedLoc() || {lat:37.5665,lon:126.9780,city:'서울'};
+let weatherScene={code:0,temp:15,ready:false};
+
+// ① GPS로 현재 위치 가져오기 (역지오코딩으로 도시명 확보)
+function getLocationByGPS(){
+  return new Promise((resolve)=>{
+    if(!navigator.geolocation){ resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      async pos=>{
+        const lat=pos.coords.latitude, lon=pos.coords.longitude;
+        let city='현재위치';
+        try{
+          const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ko`);
+          const d=await r.json();
+          city=d.address?.city||d.address?.town||d.address?.county||d.address?.state||'현재위치';
+          city=city.replace(/(특별시|광역시|특별자치시|특별자치도)$/,'').replace(/시$/,'').trim()||city;
+        }catch(_){}
+        resolve({lat,lon,city});
+      },
+      _=>resolve(null),
+      {timeout:8000, maximumAge:0}
+    );
+  });
+}
+
+// 초기 로드: 캐시 → GPS 시도 (조용히)
+async function getBestLocation(){
+  const gps=await getLocationByGPS();
+  if(gps){ saveCachedLoc(gps); return gps; }
+  const cached=loadCachedLoc();
+  if(cached) return cached;
+  return {lat:37.5665,lon:126.9780,city:'서울'};
+}
+
+// 위경도로 날씨 가져오기
 async function fetchWeatherByCoord(lat, lon, city){
   try{
     const wUrl=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul`;
@@ -1344,7 +1408,6 @@ async function fetchWeatherByCoord(lat, lon, city){
     const wind=Math.round(c.windspeed_10m*10)/10;
     const sky=WMO[code]??'--';
     const icon=WIC[code]??'🌡';
-    // 배경 씬 업데이트
     weatherScene.code=code; weatherScene.temp=temp; weatherScene.ready=true;
 
     let dustLabel='--';
@@ -1355,31 +1418,55 @@ async function fetchWeatherByCoord(lat, lon, city){
       dustLabel=pm10>150?'매우나쁨':pm10>80?'나쁨':pm10>30?'보통':'좋음';
     }catch(_){}
 
+    const locEl=document.getElementById('petinfo-loc');
+    if(locEl) locEl.textContent=city;
+
+    const locPrefix=city==='현재위치'?'📍 ':city+' ';
     document.getElementById('weather-info').textContent=
-      `${city==='서울'?'서울 ':'📍'}${icon}${sky} ${temp}°C 💨${wind}m/s 🌫미세:${dustLabel}`;
+      `${locPrefix}${icon}${sky} ${temp}°C 💨${wind}m/s 🌫미세:${dustLabel}`;
   }catch(e){
     document.getElementById('weather-info').textContent='날씨 정보 없음';
   }
 }
 
 async function initWeather(){
-  document.getElementById('weather-info').textContent='위치 감지 중...';
-  const loc = await getLocationByIP();
-  weatherCache = loc;
-  await fetchWeatherByCoord(loc.lat, loc.lon, loc.city);
+  document.getElementById('weather-info').textContent='위치 확인 중...';
+  const cached=loadCachedLoc();
+  if(cached){
+    weatherCache=cached;
+    const locEl=document.getElementById('petinfo-loc');
+    if(locEl) locEl.textContent=cached.city;
+    fetchWeatherByCoord(cached.lat,cached.lon,cached.city);
+  }
+  const best=await getBestLocation();
+  weatherCache=best;
+  await fetchWeatherByCoord(best.lat,best.lon,best.city);
 }
 
+// 위치반영 버튼: 항상 GPS 권한 새로 요청
 async function refreshWeather(){
-  const icon = document.getElementById('loc-btn-icon');
-  const label = document.getElementById('loc-btn-label');
-  icon.classList.add('spinning');
-  label.textContent='갱신중...';
-  const loc = await getLocationByIP();
-  weatherCache = loc;
-  await fetchWeatherByCoord(loc.lat, loc.lon, loc.city);
-  icon.classList.remove('spinning');
-  label.textContent='날씨갱신';
-  showToast('📍 '+loc.city+' 날씨로 업데이트했어요!');
+  const btnIcon=document.getElementById('loc-btn-icon');
+  const btnLabel=document.getElementById('loc-btn-label');
+  btnIcon.classList.add('spinning');
+  btnLabel.textContent='확인중...';
+  document.getElementById('weather-info').textContent='GPS 위치 확인 중...';
+
+  const gps=await getLocationByGPS();
+  if(gps){
+    saveCachedLoc(gps);
+    weatherCache=gps;
+    await fetchWeatherByCoord(gps.lat,gps.lon,gps.city);
+    showToast('📍 '+gps.city+' 위치로 반영됐어요!');
+  } else {
+    // GPS 거부/실패 시 캐시 또는 기본값으로 날씨만 갱신
+    const fallback=loadCachedLoc()||{lat:37.5665,lon:126.9780,city:'서울'};
+    weatherCache=fallback;
+    await fetchWeatherByCoord(fallback.lat,fallback.lon,fallback.city);
+    showToast('⚠️ 위치 권한이 필요해요. 설정에서 허용해 주세요.');
+  }
+
+  btnIcon.classList.remove('spinning');
+  btnLabel.textContent='위치반영';
 }
 
 
@@ -1405,6 +1492,39 @@ setInterval(()=>{ if(qMsgTimer==null&&S.health>=30&&S.food>=25&&S.clean>=25&&S.t
 
 // 날씨 갱신 버튼
 document.getElementById('loc-btn').addEventListener('click', refreshWeather);
+
+// ═══════════════════════════════════════
+//  자동 저장 데이터 있으면 3페이지로 이동
+// ═══════════════════════════════════════
+(function checkAutoResume(){
+  const savedRaw=localStorage.getItem('silkworm_state_v1');
+  const savedUser=localStorage.getItem('silkworm_user_v1');
+  if(!savedRaw) return; // 저장 데이터 없으면 타이틀 화면 유지
+
+  let parsedUser={};
+  try{ parsedUser=JSON.parse(savedUser||'{}'); }catch(_){}
+
+  // 이름이 하나라도 있어야 바로 진입
+  const hasName=parsedUser.userNickname||parsedUser.userPetname;
+  if(!hasName) return;
+
+  // 오프라인 경과 시간 계산 (저장 전 값 사용)
+  let offlineMin=0;
+  try{
+    const parsed=JSON.parse(savedRaw);
+    offlineMin=Math.round(Math.max(0,Date.now()-(parsed.lastTick||Date.now()))/60000);
+  }catch(_){}
+
+  // 3페이지로 바로 이동
+  goPage(3);
+
+  // 오프라인 시간 토스트
+  if(offlineMin>=1){
+    const h=Math.floor(offlineMin/60), m=offlineMin%60;
+    const timeStr=h>0?`${h}시간 ${m > 0 ? m+'분' : ''}`:`${m}분`;
+    setTimeout(()=>showToast(`⏰ ${timeStr} 동안 자리를 비웠어요! 상태를 확인해봐요~`),800);
+  }
+})();
 
 initWeather();
 setInterval(()=>fetchWeatherByCoord(weatherCache.lat,weatherCache.lon,weatherCache.city),600000);
