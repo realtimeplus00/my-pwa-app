@@ -58,18 +58,14 @@
   }
   #save-led{
     width:11px; height:11px; border-radius:50%;
-    background:#4ecca3;
-    box-shadow:0 0 6px rgba(78,204,163,.9);
+    background:#888;
+    box-shadow:none;
     flex-shrink:0;
-    transition:background .2s, box-shadow .2s;
+    transition:background .3s, box-shadow .3s;
   }
-  #save-led.saving{
+  #save-led.ok{
     background:#e94560;
-    box-shadow:0 0 8px rgba(233,69,96,1);
-    animation:led-blink .4s ease-in-out;
-  }
-  @keyframes led-blink{
-    0%{opacity:1} 40%{opacity:.15} 70%{opacity:1} 100%{opacity:1}
+    box-shadow:0 0 7px rgba(233,69,96,.8);
   }
   #save-led-label{ font-family:'Jua',cursive; font-size:10px; color:var(--gray); white-space:nowrap; }
 
@@ -523,16 +519,14 @@ function getVisitCount(){
 }
 
 function saveState(){
+  const led=document.getElementById('save-led');
   try{
     localStorage.setItem(SAVE_KEY,JSON.stringify(S));
     localStorage.setItem(USER_KEY,JSON.stringify({userNickname,userPetname}));
-    // 저장 표시등 깜빡임
-    const led=document.getElementById('save-led');
-    if(led){
-      led.classList.add('saving');
-      setTimeout(()=>led.classList.remove('saving'),500);
-    }
-  }catch(_){}
+    if(led) led.classList.add('ok');
+  }catch(_){
+    if(led) led.classList.remove('ok');
+  }
 }
 
 function loadState(){
