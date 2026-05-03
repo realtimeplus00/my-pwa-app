@@ -3,250 +3,537 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🦋 나비 키우기</title>
-<link href="https://fonts.googleapis.com/css2?family=Jua&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<title>체크 리스트</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:#1a1a2e; --panel:#16213e; --card:#0f3460;
-    --accent:#e94560; --green:#4ecca3; --yellow:#f5a623;
-    --purple:#a78bfa; --pink:#f472b6; --white:#eef0f2; --gray:#8892a4;
-  }
-  *{ margin:0; padding:0; box-sizing:border-box; }
-  html{ height:-webkit-fill-available; }
-  body{
-    font-family:'Nanum Gothic',sans-serif; background:var(--bg); color:var(--white);
-    height:100vh; height:100dvh; height:-webkit-fill-available;
-    overflow:hidden;
-  }
-  #header{
-    background:var(--panel); border-bottom:2px solid var(--card);
-    padding:5px 14px; display:flex; flex-direction:column; gap:3px; flex-shrink:0;
-    position:relative; z-index:10;
-  }
-  #header-top{ display:flex; align-items:center; justify-content:space-between; }
-  #header-bottom{ display:flex; align-items:center; justify-content:space-between; }
-  #header-petinfo{
-    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
-    font-family:'Jua',cursive; font-size:11.5px; color:var(--yellow);
-    border-top:1px solid rgba(255,255,255,.07); padding-top:3px; margin-top:1px;
-  }
-  #petinfo-name{ color:var(--pink); }
-  #petinfo-born{ color:#93c5fd; }
-  #petinfo-days{ color:var(--green); }
-  #datetime{ font-family:'Jua',cursive; font-size:13px; color:var(--green); letter-spacing:1px; }
-  #stage-badge{ background:var(--accent); color:#fff; font-family:'Jua',cursive; font-size:13px; padding:3px 12px; border-radius:20px; }
-  #weather-info{ font-family:'Jua',cursive; font-size:13px; color:#93c5fd; letter-spacing:.5px; flex:1; }
-  #weather-label{ font-family:'Jua',cursive; font-size:13px; color:var(--gray); margin-right:4px; }
-  #loc-wrap{ display:flex; align-items:center; gap:2px; flex-shrink:0; }
-  #loc-btn{
-    display:flex; flex-direction:column; align-items:center; gap:1px; cursor:pointer;
-    background:none; border:none; padding:4px 4px;
-    -webkit-tap-highlight-color:rgba(0,0,0,0);
-    touch-action:manipulation;
-  }
-  #loc-btn-icon{
-    font-size:18px; line-height:1; pointer-events:none;
-    transition:transform 0.6s;
-  }
-  #loc-btn-icon.spinning{ animation:spin 0.7s linear; }
-  @keyframes spin{ from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-  #loc-btn-label{ font-family:'Jua',cursive; font-size:10px; color:var(--gray); white-space:nowrap; pointer-events:none; }
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #243050;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --accent: #3b82f6;
 
-  #save-indicator{
-    display:flex; flex-direction:column; align-items:center; gap:2px;
-    padding:4px 6px; flex-shrink:0;
-  }
-  #save-led{
-    width:11px; height:11px; border-radius:50%;
-    background:#888;
-    box-shadow:none;
-    flex-shrink:0;
-    transition:background .3s, box-shadow .3s;
-  }
-  #save-led.ok{
-    background:#e94560;
-    box-shadow:0 0 7px rgba(233,69,96,.8);
-  }
-  #save-led-label{ font-family:'Jua',cursive; font-size:10px; color:var(--gray); white-space:nowrap; }
-
-  #top{
-    flex:1; position:relative; overflow:hidden;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-  }
-  #scene-canvas{ position:absolute; inset:0; width:100%; height:100%; }
-
-  #pet-container{
-    position:relative; z-index:2;
-    display:flex; flex-direction:column; align-items:center; gap:8px;
-    /* push down so egg sits on the nest visually */
-    margin-top: 30px;
-  }
-  #speech-bubble{
-    position:relative; background:var(--white); color:#1a1a2e;
-    border-radius:16px; padding:8px 14px; font-size:13px; font-weight:700;
-    max-width:220px; text-align:center; line-height:1.4; min-height:38px;
-    display:flex; align-items:center; justify-content:center;
-    box-shadow:0 4px 14px rgba(0,0,0,.4);
-  }
-  #speech-bubble::after{
-    content:''; position:absolute; bottom:-11px; left:50%; transform:translateX(-50%);
-    border:6px solid transparent; border-top-color:var(--white);
-  }
-  #pet-emoji{
-    font-size:58px; line-height:1;
-    filter:drop-shadow(0 0 18px rgba(78,204,163,.7));
-    animation:float 3s ease-in-out infinite; transition:filter .5s;
-  }
-  @keyframes float{
-    0%,100%{ transform:translateY(0) rotate(-2deg); }
-    50%{ transform:translateY(-10px) rotate(2deg); }
-  }
-  .pet-sick #pet-emoji{
-    animation:shake .45s ease-in-out infinite;
-    filter:drop-shadow(0 0 18px rgba(233,69,96,.7)) grayscale(60%);
-  }
-  @keyframes shake{
-    0%,100%{ transform:translateX(0); }
-    25%{ transform:translateX(-5px) rotate(-4deg); }
-    75%{ transform:translateX(5px) rotate(4deg); }
+    --up-max:   #ef4444;
+    --up-high:  #f97316;
+    --up-touch: #eab308;
+    --dn-touch: #22d3ee;
+    --dn-high:  #6366f1;
+    --dn-max:   #8b5cf6;
   }
 
-  #status-row{
-    display:flex; gap:6px; padding:5px 10px;
-    background:var(--panel); border-top:1px solid var(--card); border-bottom:1px solid var(--card); flex-shrink:0;
-  }
-  .stat-item{ flex:1; display:flex; flex-direction:column; gap:2px; }
-  .stat-label{ font-size:9px; color:var(--gray); }
-  .stat-bar{ height:6px; background:var(--card); border-radius:3px; overflow:hidden; }
-  .stat-fill{ height:100%; border-radius:3px; transition:width .5s ease; }
-  .fill-food{ background:var(--yellow); } .fill-clean{ background:var(--green); }
-  .fill-toilet{ background:var(--purple); } .fill-snack{ background:var(--pink); }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  #bottom{ background:var(--panel); padding:5px 10px 6px; display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
-  #health-bar-wrap, #happy-bar-wrap{ display:flex; align-items:center; gap:8px; }
-  #health-label{ font-family:'Jua',cursive; font-size:12px; color:var(--accent); white-space:nowrap; }
-  #happy-label { font-family:'Jua',cursive; font-size:12px; color:#facc15; white-space:nowrap; }
-  #health-bar, #happy-bar{ flex:1; height:10px; background:var(--card); border-radius:5px; overflow:hidden; }
-  #health-fill{ height:100%; background:linear-gradient(90deg,#e94560,#f97316); border-radius:5px; transition:width .5s; }
-  #happy-fill { height:100%; background:linear-gradient(90deg,#facc15,#fb923c); border-radius:5px; transition:width .5s; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
 
-  .btn-row{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
-  .btn{
-    border:none; border-radius:12px; padding:6px 4px;
-    font-family:'Jua',cursive; cursor:pointer;
-    display:flex; flex-direction:column; align-items:center; gap:2px;
-    transition:transform .12s; position:relative; overflow:hidden;
+  /* ── 헤더 ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 12px;
   }
-  .btn:active{ transform:scale(.93); }
-  .btn-icon{ font-size:18px; } .btn-label{ font-size:10px; }
-  .btn-food  { background:linear-gradient(135deg,#f5a623,#f7c67a); color:#1a1a2e; box-shadow:0 3px 10px rgba(245,166,35,.4); }
-  .btn-clean { background:linear-gradient(135deg,#4ecca3,#7edec9); color:#1a1a2e; box-shadow:0 3px 10px rgba(78,204,163,.4); }
-  .btn-toilet{ background:linear-gradient(135deg,#a78bfa,#c4b5fd); color:#1a1a2e; box-shadow:0 3px 10px rgba(167,139,250,.4); }
-  .btn-snack { background:linear-gradient(135deg,#f472b6,#f9a8d4); color:#1a1a2e; box-shadow:0 3px 10px rgba(244,114,182,.4); }
-  .btn-sleep { background:linear-gradient(135deg,#60a5fa,#93c5fd); color:#1a1a2e; box-shadow:0 3px 10px rgba(96,165,250,.4); }
-  .btn-play  { background:linear-gradient(135deg,#34d399,#6ee7b7); color:#1a1a2e; box-shadow:0 3px 10px rgba(52,211,153,.4); }
-  .btn.cooling::after{
-    content:attr(data-cd); position:absolute; inset:0;
-    background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center;
-    font-size:15px; font-family:'Jua',cursive; color:#fff; border-radius:12px;
+  header h1 {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    color: #fff;
   }
-  #question-row{
-    position:absolute; bottom:8px; left:6px; right:6px; z-index:3;
-    display:grid; grid-template-columns:repeat(4,1fr); gap:5px;
-  }
-  .q-btn{
-    background:rgba(10,15,40,0.72); border:2px solid #facc15;
-    border-radius:10px; color:#facc15; font-family:'Jua',cursive;
-    font-size:11px; padding:6px 3px; cursor:pointer; text-align:center;
-    line-height:1.3; transition:background .15s, transform .1s;
-    -webkit-tap-highlight-color:rgba(0,0,0,0);
-    word-break:keep-all;
-  }
-  .q-btn:active{ transform:scale(.93); background:rgba(250,204,21,0.18); }
-  /* ── 페이지 시스템 ── */
-  .page{ display:none; flex-direction:column; height:100%; }
-  .page.active{ display:flex; }
-  #page3{ flex-direction:column; height:100vh; height:100dvh; }
+  header h1 span { color: var(--accent); }
 
-  /* ── 1페이지: 타이틀 ── */
-  #page1{
-    align-items:center; justify-content:center; gap:28px;
-    background:linear-gradient(160deg,#0d0d2b 0%,#1a1a3e 60%,#0f2040 100%);
-    padding:30px 24px;
+  /* ── 날짜 입력 ── */
+  .date-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
   }
-  #p1-title{
-    font-family:'Jua',cursive; font-size:38px; color:var(--green);
-    text-shadow:0 0 24px rgba(78,204,163,.6),0 0 60px rgba(78,204,163,.3);
-    letter-spacing:2px; text-align:center;
+  .date-row label { font-size: 12px; color: var(--text-dim); }
+  .date-row input[type="date"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+    cursor: pointer;
+    width: 155px;   /* 날짜 박스 너비 충분히 확보 */
+    min-width: 155px;
   }
-  #p1-butterfly{ font-size:72px; animation:float 3s ease-in-out infinite; filter:drop-shadow(0 0 24px rgba(167,139,250,.8)); }
-  #p1-desc{
-    font-family:'Nanum Gothic',sans-serif; font-size:15px; color:var(--white);
-    text-align:center; line-height:2; opacity:.88;
-    background:rgba(255,255,255,.06); border-radius:16px; padding:18px 22px;
+  .date-row input[type="date"]:focus { border-color: var(--accent); }
+  /* 날짜 색상 보정 (webkit) */
+  .date-row input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
   }
-  #p1-start{
-    background:linear-gradient(135deg,var(--green),#38b2a0);
-    color:#0d1a14; font-family:'Jua',cursive; font-size:20px;
-    border:none; border-radius:30px; padding:14px 52px;
-    cursor:pointer; box-shadow:0 4px 20px rgba(78,204,163,.45);
-    transition:transform .12s, box-shadow .12s;
-  }
-  #p1-start:active{ transform:scale(.95); box-shadow:0 2px 10px rgba(78,204,163,.3); }
 
-  /* ── 2페이지: 별칭+이름 설정 ── */
-  #page2{
-    align-items:center; justify-content:center; gap:22px;
-    background:linear-gradient(160deg,#0d0d2b 0%,#1a1a3e 60%,#0f2040 100%);
-    padding:30px 24px;
+  /* ── 대상 설정 패널 ── */
+  .setup-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 24px;
   }
-  #p2-title{ font-family:'Jua',cursive; font-size:26px; color:var(--green); text-align:center; }
-  .setup-card{
-    width:100%; max-width:340px;
-    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12);
-    border-radius:18px; padding:20px 18px; display:flex; flex-direction:column; gap:14px;
+  .setup-panel h2 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
   }
-  .setup-card h3{ font-family:'Jua',cursive; font-size:15px; color:var(--gray); margin-bottom:2px; }
-  .setup-row{ display:flex; align-items:center; gap:8px; }
-  .setup-label{ font-family:'Jua',cursive; font-size:15px; color:var(--white); white-space:nowrap; flex-shrink:0; }
-  .setup-input{
-    flex:1; min-width:0; width:0;
-    background:rgba(255,255,255,.1); border:1.5px solid rgba(255,255,255,.2);
-    border-radius:10px; color:var(--white); font-family:'Jua',cursive; font-size:15px;
-    padding:8px 10px; outline:none; transition:border-color .2s;
+  .stock-inputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
   }
-  .setup-input:focus{ border-color:var(--green); }
-  .setup-save{
-    flex-shrink:0;
-    background:linear-gradient(135deg,var(--accent),#c73652);
-    color:#fff; font-family:'Jua',cursive; font-size:13px;
-    border:none; border-radius:16px; padding:8px 14px;
-    cursor:pointer; transition:transform .12s; white-space:nowrap;
+  .stock-input-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: relative;
   }
-  .setup-save:active{ transform:scale(.95); }
-  .setup-saved{ font-family:'Jua',cursive; font-size:13px; color:var(--green); opacity:0; transition:opacity .3s; }
-  .setup-saved.show{ opacity:1; }
-  #p2-next{
-    background:linear-gradient(135deg,var(--purple),#7c5ccc);
-    color:#fff; font-family:'Jua',cursive; font-size:18px;
-    border:none; border-radius:30px; padding:13px 46px;
-    cursor:pointer; box-shadow:0 4px 18px rgba(167,139,250,.4);
-    transition:transform .12s; margin-top:6px;
+  .stock-input-wrap label {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
   }
-  #p2-next:active{ transform:scale(.95); }
-  #p2-greeting{ font-family:'Jua',cursive; font-size:17px; color:var(--yellow); text-align:center; min-height:26px; }
+  .stock-input-wrap input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .stock-input-wrap input::placeholder { color: var(--text-dim); font-weight: 400; }
+  .stock-input-wrap input:focus { border-color: var(--accent); }
 
-  #toast{
-    position:fixed; top:54px; left:50%; transform:translateX(-50%) translateY(-70px);
-    background:var(--accent); color:#fff; font-family:'Jua',cursive;
-    font-size:13px; padding:7px 18px; border-radius:28px;
-    transition:transform .3s; z-index:100; white-space:nowrap; pointer-events:none;
+  /* 삭제 버튼 */
+  .btn-remove-stock {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    transition: color .2s;
   }
-  #toast.show{ transform:translateX(-50%) translateY(0); }
+  .btn-remove-stock:hover { color: #ef4444; }
+
+  .setup-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .btn-apply {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 22px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+  .btn-apply:hover { opacity: .85; }
+
+  .btn-add-stock {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-add-stock:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── 체크 테이블 ── */
+  .check-section { display: flex; flex-direction: column; gap: 16px; }
+
+  .stock-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .stock-card:hover { border-color: #334a7a; }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .stock-name {
+    font-size: 17px;
+    font-weight: 900;
+    font-family: 'JetBrains Mono', monospace;
+    color: #fff;
+    letter-spacing: 1px;
+  }
+  .stock-idx {
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--bg);
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+
+  /* ── 방향 버튼 ── */
+  .dir-buttons {
+    display: flex;
+    gap: 4px;
+    padding: 12px 14px;
+    flex-wrap: nowrap;
+  }
+  .dir-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 10px 2px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    font-size: clamp(10px, 1.8vw, 12px);
+    font-weight: 700;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: all .15s;
+    text-align: center;
+    background: var(--bg);
+    color: var(--text-dim);
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 순서 변경: dn-max, dn-high, dn-touch, up-touch, up-high, up-max */
+  .dir-btn[data-dir="dn-max"]   { border-color: #1e1040; }
+  .dir-btn[data-dir="dn-high"]  { border-color: #1a1a40; }
+  .dir-btn[data-dir="dn-touch"] { border-color: #00c4d4; border-width: 1px; }
+  .dir-btn[data-dir="up-touch"] { border-color: #b8960a; border-width: 1px; }
+  .dir-btn[data-dir="up-high"]  { border-color: #3a2210; }
+  .dir-btn[data-dir="up-max"]   { border-color: #3a1a1a; }
+
+  .dir-btn:hover[data-dir="dn-max"]   { background: #160c30; color: var(--dn-max); }
+  .dir-btn:hover[data-dir="dn-high"]  { background: #0e0e30; color: var(--dn-high); }
+  .dir-btn:hover[data-dir="dn-touch"] { background: #001e22; color: var(--dn-touch); }
+  .dir-btn:hover[data-dir="up-touch"] { background: #1e1a00; color: var(--up-touch); }
+  .dir-btn:hover[data-dir="up-high"]  { background: #2a1200; color: var(--up-high); }
+  .dir-btn:hover[data-dir="up-max"]   { background: #2a0808; color: var(--up-max); }
+
+  /* 선택된 상태 */
+  .dir-btn.selected[data-dir="dn-max"]   { background: var(--dn-max);   color: #fff; border-color: var(--dn-max); }
+  .dir-btn.selected[data-dir="dn-high"]  { background: var(--dn-high);  color: #fff; border-color: var(--dn-high); }
+  .dir-btn.selected[data-dir="dn-touch"] { background: var(--dn-touch); color: #000; border-color: var(--dn-touch); }
+  .dir-btn.selected[data-dir="up-touch"] { background: var(--up-touch); color: #000; border-color: var(--up-touch); }
+  .dir-btn.selected[data-dir="up-high"]  { background: var(--up-high);  color: #fff; border-color: var(--up-high); }
+  .dir-btn.selected[data-dir="up-max"]   { background: var(--up-max);   color: #fff; border-color: var(--up-max); }
+
+  /* ── 비고 ── */
+  .memo-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 18px 14px;
+  }
+  .memo-row label {
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .memo-row textarea {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    resize: vertical;
+    min-height: 38px;
+    max-height: 100px;
+    outline: none;
+    transition: border-color .2s;
+    line-height: 1.5;
+  }
+  .memo-row textarea:focus { border-color: var(--accent); }
+
+  /* ── 기록 저장/불러오기 ── */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(10,14,26,.92);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    z-index: 100;
+  }
+  .bottom-bar .status {
+    flex: 1;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .btn-save, .btn-history, .btn-export {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+  .btn-save    { background: #22c55e; color: #000; }
+  .btn-history { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-export  { background: #0ea5e9; color: #fff; }
+  .btn-save:hover, .btn-history:hover, .btn-export:hover { opacity: .8; }
+
+  /* ── 기록 모달 ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.75);
+    z-index: 200;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 30px 16px;
+    overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 700px;
+    padding: 24px;
+  }
+  .modal h2 {
+    font-size: 16px;
+    font-weight: 900;
+    margin-bottom: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal h2 button {
+    background: none; border: none; color: var(--text-dim);
+    font-size: 20px; cursor: pointer; line-height: 1;
+  }
+  .history-list { display: flex; flex-direction: column; gap: 10px; }
+  .history-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: border-color .2s;
+  }
+  .history-item:hover { border-color: var(--accent); }
+  .history-item .h-date {
+    font-size: 12px;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .history-item .h-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .h-chip {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .h-chip.up-max   { background: var(--up-max);   color: #fff; }
+  .h-chip.up-high  { background: var(--up-high);  color: #fff; }
+  .h-chip.up-touch { background: var(--up-touch); color: #000; }
+  .h-chip.dn-touch { background: var(--dn-touch); color: #000; }
+  .h-chip.dn-high  { background: var(--dn-high);  color: #fff; }
+  .h-chip.dn-max   { background: var(--dn-max);   color: #fff; }
+  .h-chip.none     { background: var(--bg); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .history-item .h-del {
+    float: right;
+    font-size: 11px;
+    color: var(--text-dim);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 8px;
+    cursor: pointer;
+    margin-left: 8px;
+  }
+  .history-item .h-del:hover { color: #ef4444; border-color: #ef4444; }
+
+  .empty-msg { color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px 0; }
+
+  /* ── 달력 모달 ── */
+  .cal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.75);
+    z-index: 200;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 30px 16px;
+    overflow-y: auto;
+  }
+  .cal-overlay.open { display: flex; }
+  .cal-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 480px;
+    padding: 24px;
+  }
+  .cal-modal h2 {
+    font-size: 16px;
+    font-weight: 900;
+    margin-bottom: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .cal-modal h2 button {
+    background: none; border: none; color: var(--text-dim);
+    font-size: 20px; cursor: pointer; line-height: 1;
+  }
+  .cal-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .cal-nav button {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color .2s;
+  }
+  .cal-nav button:hover { border-color: var(--accent); }
+  .cal-nav span {
+    font-size: 15px;
+    font-weight: 900;
+    font-family: 'JetBrains Mono', monospace;
+    color: #fff;
+  }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .cal-day-header {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 4px 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .cal-day-header:first-child { color: #ef6060; }
+  .cal-day-header:last-child  { color: #6091ef; }
+  .cal-cell {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-dim);
+    cursor: default;
+    position: relative;
+    border: 1.5px solid transparent;
+    transition: border-color .15s;
+  }
+  .cal-cell.in-month { color: var(--text); }
+  .cal-cell.today {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 900;
+  }
+  /* 기록 있는 날 – 테두리 강조 */
+  .cal-cell.has-record {
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .cal-cell.has-record.today {
+    border-color: #fff;
+  }
+  /* 날짜 아래 점 */
+  .cal-cell.has-record::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .cal-cell.has-record.today::after {
+    background: #fff;
+  }
+
+  /* 반응형 */
+  @media (max-width: 480px) {
+    .dir-btn { min-width: 50px; font-size: 11px; padding: 8px 2px; }
+  }
 </style>
 
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="나비 키우기">
+  <meta name="apple-mobile-web-app-title" content="주 체크 리스트">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#7c3aed">
@@ -271,1257 +558,374 @@
 </head>
 <body>
 
-<!-- ══════════════════════════════════ -->
-<!--  1페이지: 타이틀 화면              -->
-<!-- ══════════════════════════════════ -->
-<div id="page1" class="page active">
-  <div id="p1-butterfly">🦋</div>
-  <div id="p1-title">나비 키우기</div>
-  <div id="p1-desc">
-    이제 나비를 키울 건데<br>
-    알부터 시작합니다.<br><br>
-    아래 버튼을 누르면 시작합니다.
+<header>
+  <h1>📈 <span>체크 리스트</span></h1>
+  <div class="date-row">
+    <label>체크 날짜</label>
+    <input type="date" id="checkDate">
   </div>
-  <button id="p1-start" onclick="goPage(2)">시작하기</button>
+</header>
+
+<!-- 대상 설정 -->
+<div class="setup-panel">
+  <h2>대상 설정</h2>
+  <div class="stock-inputs" id="stockInputs"></div>
+  <div class="setup-actions">
+    <button class="btn-apply" onclick="applyStocks()">✔ 적용</button>
+    <button class="btn-add-stock" onclick="addStockInput()">＋ 추가</button>
+  </div>
 </div>
 
-<!-- ══════════════════════════════════ -->
-<!--  2페이지: 별칭 & 나비 이름 설정    -->
-<!-- ══════════════════════════════════ -->
-<div id="page2" class="page">
-  <div id="p2-title">🌱 시작 설정</div>
+<!-- 체크 카드 -->
+<div class="check-section" id="checkSection"></div>
 
-  <!-- 내 별칭 -->
-  <div class="setup-card">
-    <h3>👤 내 별칭</h3>
-    <div class="setup-row">
-      <span class="setup-label">내 별칭</span>
-      <input class="setup-input" id="input-nickname" type="text" maxlength="10" placeholder="별칭을 입력해줘요">
-      <button class="setup-save" onclick="saveNickname()">저장</button>
+<!-- 하단 바 -->
+<div class="bottom-bar">
+  <span class="status" id="statusMsg">대상을 입력하고 적용을 누르세요.</span>
+  <button class="btn-history" onclick="openCalendar()">📅 달력</button>
+  <button class="btn-history" onclick="openHistory()">📋 기록 보기</button>
+  <button class="btn-export" onclick="exportCSV()">⬇ CSV 내보내기</button>
+  <button class="btn-save" onclick="saveRecord()">💾 이번 주 저장</button>
+</div>
+
+<!-- 기록 모달 -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal">
+    <h2>📋 저장된 기록 <button onclick="closeHistory()">×</button></h2>
+    <div class="history-list" id="historyList"></div>
+  </div>
+</div>
+
+<!-- 달력 모달 -->
+<div class="cal-overlay" id="calModal">
+  <div class="cal-modal">
+    <h2>📅 달력 <button onclick="closeCalendar()">×</button></h2>
+    <div class="cal-nav">
+      <button onclick="calPrev()">◀</button>
+      <span id="calTitle"></span>
+      <button onclick="calNext()">▶</button>
     </div>
-    <span class="setup-saved" id="saved-nickname">✅ 저장됐어요!</span>
-  </div>
-
-  <!-- 나비 이름 -->
-  <div class="setup-card">
-    <h3 id="p2-greeting"></h3>
-    <div class="setup-row">
-      <span class="setup-label">나비 이름</span>
-      <input class="setup-input" id="input-petname" type="text" maxlength="10" placeholder="나비 이름을 지어줘요">
-      <button class="setup-save" onclick="savePetname()">저장</button>
-    </div>
-    <span class="setup-saved" id="saved-petname">✅ 저장됐어요!</span>
-  </div>
-
-  <button id="p2-next" onclick="goPage(3)">다음 ›</button>
-</div>
-
-<!-- ══════════════════════════════════ -->
-<!--  3페이지: 게임 화면                -->
-<!-- ══════════════════════════════════ -->
-<div id="page3" class="page">
-
-<div id="header">
-  <div id="header-top">
-    <div id="datetime">📅 --</div>
-    <div id="stage-badge">🥚 알</div>
-  </div>
-  <div id="header-bottom">
-    <span id="weather-label">오늘 날씨</span>
-    <span id="weather-info">불러오는 중...</span>
-    <div id="loc-wrap">
-      <button id="loc-btn" type="button">
-        <span id="loc-btn-icon">🔄</span>
-        <span id="loc-btn-label">위치반영</span>
-      </button>
-      <div id="save-indicator">
-        <div id="save-led"></div>
-        <span id="save-led-label">저장상태</span>
-      </div>
-    </div>
-  </div>
-  <div id="header-petinfo">
-    <span>이름 : <span id="petinfo-name">--</span></span>
-    <span>·</span>
-    <span>태어난 날 : <span id="petinfo-born">--</span></span>
-    <span id="petinfo-days" style="color:var(--green)"></span>
-    <span>·</span>
-    <span>찾아온 날 : <span id="petinfo-visits" style="color:var(--purple)">--</span></span>
-    <span>·</span>
-    <span>📍<span id="petinfo-loc" style="color:#93c5fd">--</span></span>
+    <div class="cal-grid" id="calGrid"></div>
   </div>
 </div>
-
-<div id="top">
-  <canvas id="scene-canvas"></canvas>
-  <div id="pet-container">
-    <div id="speech-bubble">안녕! 나를 잘 돌봐줘~ 🥰</div>
-    <div id="pet-emoji">🥚</div>
-  </div>
-  <div id="question-row">
-    <button class="q-btn" onclick="askQ(0)">어제<br>뭐했어?</button>
-    <button class="q-btn" onclick="askQ(1)">좋은 일<br>있어?</button>
-    <button class="q-btn" onclick="askQ(2)">밥은 잘<br>먹었어?</button>
-    <button class="q-btn" onclick="askQ(3)">내일<br>뭐할거야?</button>
-  </div>
-</div>
-
-<div id="status-row">
-  <div class="stat-item"><div class="stat-label">🍃 밥</div>
-    <div class="stat-bar"><div class="stat-fill fill-food" id="b-food" style="width:100%"></div></div></div>
-  <div class="stat-item"><div class="stat-label">🧹 청결</div>
-    <div class="stat-bar"><div class="stat-fill fill-clean" id="b-clean" style="width:100%"></div></div></div>
-  <div class="stat-item"><div class="stat-label">🚽 화장실</div>
-    <div class="stat-bar"><div class="stat-fill fill-toilet" id="b-toilet" style="width:100%"></div></div></div>
-  <div class="stat-item"><div class="stat-label">🍬 간식</div>
-    <div class="stat-bar"><div class="stat-fill fill-snack" id="b-snack" style="width:100%"></div></div></div>
-</div>
-
-<div id="bottom">
-  <div id="health-bar-wrap">
-    <div id="health-label">❤️ 건강</div>
-    <div id="health-bar"><div id="health-fill" style="width:100%"></div></div>
-    <div id="health-val" style="font-size:11px;color:var(--gray);white-space:nowrap">100%</div>
-  </div>
-  <div id="happy-bar-wrap">
-    <div id="happy-label">😊 행복</div>
-    <div id="happy-bar"><div id="happy-fill" style="width:100%"></div></div>
-    <div id="happy-val" style="font-size:11px;color:var(--gray);white-space:nowrap">100%</div>
-  </div>
-  <div class="btn-row">
-    <button class="btn btn-food"   onclick="doAction('food')"   id="btn-food"><span class="btn-icon">🍃</span><span class="btn-label">온기 주기</span></button>
-    <button class="btn btn-clean"  onclick="doAction('clean')"  id="btn-clean"><span class="btn-icon">🧹</span><span class="btn-label">주변 청소</span></button>
-    <button class="btn btn-toilet" onclick="doAction('toilet')" id="btn-toilet"><span class="btn-icon">🚽</span><span class="btn-label">공기 정화</span></button>
-  </div>
-  <div class="btn-row">
-    <button class="btn btn-snack"  onclick="doAction('snack')"  id="btn-snack"><span class="btn-icon">🍬</span><span class="btn-label">특별 간식</span></button>
-    <button class="btn btn-sleep"  onclick="doAction('sleep')"  id="btn-sleep"><span class="btn-icon">😴</span><span class="btn-label">재워주기</span></button>
-    <button class="btn btn-play"   onclick="doAction('play')"   id="btn-play"><span class="btn-icon">🎮</span><span class="btn-label">놀아주기</span></button>
-  </div>
-</div>
-<div id="toast">잠깐만요!</div>
-</div><!-- /page3 -->
 
 <script>
-// ═══════════════════════════════════════
-//  페이지 관리
-// ═══════════════════════════════════════
-let userNickname='', userPetname='';
-let S; // STATE - initState()에서 초기화됨
-
-function goPage(n){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page'+n).classList.add('active');
-  if(n===3){
-    setTimeout(()=>{
-      if(!S.bornDate){ S.bornDate=Date.now(); }
-      resizeCanvas();
-      updatePetInfo();
-      render();
-      saveState();
-    },50);
-  }
-}
-
-function saveNickname(){
-  const val=document.getElementById('input-nickname').value.trim();
-  if(!val){ return; }
-  userNickname=val;
-  const saved=document.getElementById('saved-nickname');
-  saved.classList.add('show');
-  setTimeout(()=>saved.classList.remove('show'),2000);
-  // 나비 이름 카드 제목 업데이트
-  document.getElementById('p2-greeting').textContent=`${userNickname} 님, 나비 이름도 지어주세요 🦋`;
-}
-
-function savePetname(){
-  const val=document.getElementById('input-petname').value.trim();
-  if(!val){ return; }
-  userPetname=val;
-  const saved=document.getElementById('saved-petname');
-  saved.classList.add('show');
-  setTimeout(()=>saved.classList.remove('show'),2000);
-}
-
-function updatePetInfo(){
-  const nameEl=document.getElementById('petinfo-name');
-  const bornEl=document.getElementById('petinfo-born');
-  const daysEl=document.getElementById('petinfo-days');
-  const visitsEl=document.getElementById('petinfo-visits');
-  if(!nameEl) return;
-  nameEl.textContent=userPetname||'--';
-  if(visitsEl) visitsEl.textContent=getVisitCount()+'일';
-  if(!S.bornDate){ bornEl.textContent='--'; daysEl.textContent=''; return; }
-  const born=new Date(S.bornDate);
-  const p=n=>String(n).padStart(2,'0');
-  bornEl.textContent=`${born.getFullYear()}.${p(born.getMonth()+1)}.${p(born.getDate())}`;
-  const diffDays=Math.floor((Date.now()-S.bornDate)/86400000);
-  daysEl.textContent=`(+${diffDays}일)`;
-}
-
-// ═══════════════════════════════════════
-//  STATE & 유틸리티
-// ═══════════════════════════════════════
-const STAGES=[{name:'알',emoji:'🥚'},{name:'애벌레',emoji:'🐛'},{name:'누에고치',emoji:'🫘'},{name:'나비',emoji:'🦋'}];
-const DRAIN={food:1.5,clean:0.8,toilet:1.2,snack:0.6};
-const CD={food:30000,clean:20000,toilet:20000,snack:120000,sleep:60000,play:45000};
-const MSG={
-  hungry:['따뜻함이 필요해요... 🌡️','온기가 식어가요~ 으슬으슬 😢','차가워요! 빨리 온기를 주세요!'],
-  dirty:['주변이 너무 지저분해요! 🍂','청소해줘요~ 😤','어수선해서 못 있겠어요!'],
-  toilet:['공기가 탁해요! 😮‍💨','공기 정화가 필요해요~ 😖','숨쉬기 힘들어요!'],
-  nosnack:['간식 먹고 싶어요! 🍬','특별한 거 먹고 싶다~ 😋'],
-  sad:['조금 외로워요... 🥺','놀아줘요~ 😟','심심해요 💙'],
-  sick:['몸이 안 좋아요... 😷','기운이 없어요 💔','많이 아파요...😿'],
-  happy:['오늘도 잘 부탁해요! 🥰','행복해요~ 😊','꼭 나비가 될게요! 🦋','잘 돌봐줘서 고마워요 💚'],
-  cocoon:['번데기 중이에요... 조용히 해줘요 🫘'],
-  butterfly:['나비가 됐어요!!! 🦋✨','날 수 있어요! 훨훨~ 🦋'],
-};
-const FULLMSG={
-  food:['따뜻해요~ 고마워요! 🌡️','온기가 충분해요, 감사해요! 😊','이미 따뜻한데 신경써줘서 감사! 🌿'],
-  clean:['이미 깨끗한데 청소해줘서 고마워요! 🍃','주변이 깔끔해요~ 감사합니다! ✨','신경써줘서 고마워요 💚'],
-  toilet:['공기가 맑아요~ 감사해요! 🌬️','이미 청정해요, 고마워요! 😄','공기는 걱정 없어요, 감사! 🌸'],
-  snack:['간식은 충분해요~ 고마워요! 🍬','배가 너무 부를 것 같아요, 감사해요! 😋','이미 달콤해요! 감사합니다 🍭'],
-};
-
-// ── 유틸 (저장/불러오기보다 먼저 선언) ──
-const rand=a=>a[Math.floor(Math.random()*a.length)];
-const clamp=(v,lo=0,hi=100)=>Math.max(lo,Math.min(hi,v));
-const lerp=(a,b,t)=>a+(b-a)*t;
-const st=()=>STAGES[S.stage];
-
-// ═══════════════════════════════════════
-//  SAVE / LOAD (localStorage)
-// ═══════════════════════════════════════
-const SAVE_KEY='silkworm_state_v1';
-const USER_KEY='silkworm_user_v1';
-const VISIT_KEY='silkworm_visits_v1';
-
-// ── 방문 횟수 관리 ──
-function recordVisit(){
-  // 오늘 날짜 문자열 (YYYY-MM-DD)
-  const today=new Date();
-  const dateStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  try{
-    const raw=localStorage.getItem(VISIT_KEY);
-    const visits=raw?JSON.parse(raw):[];
-    // 오늘이 이미 기록되어 있으면 추가 안 함
-    if(!visits.includes(dateStr)) visits.push(dateStr);
-    localStorage.setItem(VISIT_KEY,JSON.stringify(visits));
-  }catch(_){}
-}
-
-function getVisitCount(){
-  try{
-    const raw=localStorage.getItem(VISIT_KEY);
-    if(!raw) return 0;
-    return JSON.parse(raw).length;
-  }catch(_){ return 0; }
-}
-
-function saveState(){
-  const led=document.getElementById('save-led');
-  try{
-    localStorage.setItem(SAVE_KEY,JSON.stringify(S));
-    localStorage.setItem(USER_KEY,JSON.stringify({userNickname,userPetname}));
-    if(led) led.classList.add('ok');
-  }catch(_){
-    if(led) led.classList.remove('ok');
-  }
-}
-
-function loadState(){
-  try{
-    const raw=localStorage.getItem(SAVE_KEY);
-    if(!raw) return null;
-    return JSON.parse(raw);
-  }catch(_){ return null; }
-}
-
-function applyOfflineTime(saved){
-  const now=Date.now();
-  const offlineMs=Math.max(0, now-(saved.lastTick||now));
-  const offlineMin=Math.min(offlineMs/60000, 72*60); // 최대 72시간 캡
-  if(offlineMin<0.5) return saved;                   // 30초 미만 무시
-
-  const d=Object.assign({},saved, {cooldowns:Object.assign({},saved.cooldowns)});
-  if(!d.sleeping){
-    d.food  =clamp(d.food  -DRAIN.food  *offlineMin);
-    d.clean =clamp(d.clean -DRAIN.clean *offlineMin);
-    d.toilet=clamp(d.toilet-DRAIN.toilet*offlineMin);
-    d.snack =clamp(d.snack -DRAIN.snack *offlineMin);
-    let hd=0.4*offlineMin;
-    if(d.food<30||d.clean<30||d.toilet<30) hd+=0.5*offlineMin;
-    if(d.snack>60) hd-=0.2*offlineMin;
-    d.happy=clamp(d.happy-hd);
-    let pen=0;
-    if(d.food<20)pen+=.5; if(d.clean<20)pen+=.3;
-    if(d.toilet<20)pen+=.4; if(d.snack<10)pen+=.1;
-    if(d.happy<20)pen+=.2;
-    pen*=offlineMin;
-    const ok=d.food>60&&d.clean>60&&d.toilet>60;
-    d.health=clamp(d.health+(ok?.1*offlineMin:-pen));
-  }
-  d.lastTick=now;
-  return d;
-}
-
-// ── 저장 데이터 불러오기 및 S 초기화 ──
-(function initState(){
-  const saved=loadState();
-  const defaultS={
-    stage:0,bornAt:Date.now(),bornDate:null,
-    food:100,clean:100,toilet:100,snack:100,
-    health:100,happy:100,lastTick:Date.now(),
-    cooldowns:{},message:MSG.happy[0],sleeping:false
-  };
-  if(saved){
-    S=applyOfflineTime(saved);
-    try{
-      const u=JSON.parse(localStorage.getItem(USER_KEY)||'{}');
-      if(u.userNickname) userNickname=u.userNickname;
-      if(u.userPetname)  userPetname =u.userPetname;
-    }catch(_){}
-  } else {
-    S=defaultS;
-  }
-})();
-
-// 오늘 방문 기록
-recordVisit();
-
-// ── 자동 저장 (tick마다 + 5초 주기) ──
-setInterval(saveState,5000);
-
-const QMSG=[
-  ['어제는 조용히 실을 뽑았어요~ 🧵','어제는 잎사귀를 잔뜩 먹었어요! 😋','어제는 낮잠을 자면서 쉬었답니다 💤','어제는 네가 보고 싶었어요 🥺'],
-  ['네가 놀러 와줬잖아요! 그게 제일 좋아요 🥰','오늘 잎이 특히 신선했어요! 🍃','햇살이 따뜻해서 기분이 좋았어요 ☀️','딱히 없었지만 네가 있으니까 좋아요 💚'],
-  ['뽕잎을 세 장이나 먹었어요! 😄','오늘은 조금 입맛이 없었어요... 😶','맛있게 냠냠 다 먹었어요! 🍽️','간식도 같이 먹었더니 더 맛있었어요 🍬'],
-  ['내일은 실을 더 열심히 뽑을 거예요! 🧵','내일도 네가 와줬으면 좋겠어요 🥺','내일은 누에고치가 될 수 있을지도? 🫘✨','내일은 푹 쉬면서 성장할 거예요 💪'],
+// 버튼 순서: 하방 대 → 하방 초 → 하방 접 → 상방 접 → 상방 초 → 상방 대
+const DIRS = [
+  { key: 'dn-max',   label: '하방 대' },
+  { key: 'dn-high',  label: '하방 초' },
+  { key: 'dn-touch', label: '하방 C' },
+  { key: 'up-touch', label: '상방 C' },
+  { key: 'up-high',  label: '상방 초' },
+  { key: 'up-max',   label: '상방 대' },
 ];
-let qMsgTimer=null;
-function askQ(idx){
-  const reply=QMSG[idx][Math.floor(Math.random()*QMSG[idx].length)];
-  S.message=reply;
-  document.getElementById('speech-bubble').textContent=reply;
-  clearTimeout(qMsgTimer);
-  qMsgTimer=setTimeout(()=>{ qMsgTimer=null; pickMsg(); render(); },6000);
-}
 
-// ═══════════════════════════════════════
-//  CANVAS SCENE
-// ═══════════════════════════════════════
-const canvas=document.getElementById('scene-canvas');
-const ctx=canvas.getContext('2d');
-let animT=0;
+let stocks = [];
+let records = [];
+let currentCheck = {};
+let inputCount = 7; // 현재 입력 칸 수
 
-function resizeCanvas(){
-  const top=document.getElementById('top');
-  const w=top.clientWidth, h=top.clientHeight;
-  if(!w||!h){ setTimeout(resizeCanvas,50); return; }
-  canvas.width=w; canvas.height=h;
-}
+// 달력 상태
+let calYear, calMonth;
 
-// ── Sky (시간+날씨 연동) ──────────────────────
-// 시간대별 하늘 색상 팔레트
-const SKY_PALETTES={
-  night:   {top:[8,12,40],    bot:[12,20,55]},   // 0~4시
-  dawn:    {top:[30,20,60],   bot:[90,50,40]},   // 4~6시
-  sunrise: {top:[60,40,80],   bot:[220,120,60]}, // 6~8시
-  morning: {top:[50,110,190], bot:[120,180,230]},// 8~11시
-  noon:    {top:[30,100,200], bot:[100,170,240]},// 11~15시
-  afternoon:{top:[45,90,180], bot:[140,180,230]},// 15~18시
-  sunset:  {top:[60,50,100],  bot:[230,110,50]}, // 18~20시
-  dusk:    {top:[20,20,70],   bot:[80,50,80]},   // 20~22시
-  latenight:{top:[5,8,32],   bot:[10,15,48]},    // 22~24시
-};
-function getSkyPalette(h){
-  if(h<4)  return SKY_PALETTES.night;
-  if(h<6)  return SKY_PALETTES.dawn;
-  if(h<8)  return SKY_PALETTES.sunrise;
-  if(h<11) return SKY_PALETTES.morning;
-  if(h<15) return SKY_PALETTES.noon;
-  if(h<18) return SKY_PALETTES.afternoon;
-  if(h<20) return SKY_PALETTES.sunset;
-  if(h<22) return SKY_PALETTES.dusk;
-  return SKY_PALETTES.latenight;
-}
-// 0~1 사이 부드럽게 혼합
-function blendPalettes(p1,p2,t){
-  return {
-    top:p1.top.map((v,i)=>lerp(v,p2.top[i],t)),
-    bot:p1.bot.map((v,i)=>lerp(v,p2.bot[i],t)),
-  };
-}
-function getCurrentSkyPalette(){
-  const now=new Date();
-  const h=now.getHours()+(now.getMinutes()/60);
-  const breaks=[0,4,6,8,11,15,18,20,22,24];
-  const keys=['night','dawn','sunrise','morning','noon','afternoon','sunset','dusk','latenight','night'];
-  for(let i=0;i<breaks.length-1;i++){
-    if(h>=breaks[i]&&h<breaks[i+1]){
-      const t=(h-breaks[i])/(breaks[i+1]-breaks[i]);
-      return blendPalettes(SKY_PALETTES[keys[i]],SKY_PALETTES[keys[i+1]],t);
+// ── 초기화 ──
+(function init() {
+  const today = new Date();
+  document.getElementById('checkDate').value = today.toISOString().slice(0, 10);
+  calYear  = today.getFullYear();
+  calMonth = today.getMonth();
+
+  try {
+    const saved = localStorage.getItem('stockTrackerData');
+    if (saved) {
+      const data = JSON.parse(saved);
+      stocks = data.stocks || [];
+      records = data.records || [];
     }
-  }
-  return SKY_PALETTES.latenight;
-}
+  } catch(e) {}
 
-// 날씨코드 분류
-function getWeatherType(code){
-  if(code===0)                         return 'clear';
-  if(code===1)                         return 'mostly_clear';
-  if(code===2)                         return 'partly_cloudy';
-  if(code===3)                         return 'overcast';
-  if(code>=45&&code<=48)               return 'fog';
-  if(code>=51&&code<=55)               return 'drizzle';
-  if(code>=61&&code<=65)               return 'rain';
-  if(code>=71&&code<=75||code===77)    return 'snow';
-  if(code>=80&&code<=82)               return 'showers';
-  if(code>=95&&code<=99)               return 'thunder';
-  return 'clear';
-}
-
-// 구름 인스턴스
-const CLOUDS=Array.from({length:8},(_,i)=>({
-  x: (i/8)*1.3,   // 0~1.3 (화면 밖 포함)
-  y: 0.05+Math.random()*0.22,
-  w: 0.18+Math.random()*0.22,
-  h: 0.07+Math.random()*0.07,
-  spd: 0.004+Math.random()*0.006,
-  alpha: 0.7+Math.random()*0.3,
-  layer: i%3,     // 0=가장 앞, 2=가장 뒤
-}));
-
-// 눈송이 파티클
-const SNOWFLAKES=Array.from({length:40},(_,i)=>({
-  x:Math.random(), y:Math.random(),
-  r:1+Math.random()*2.5,
-  spd:0.012+Math.random()*0.018,
-  drift:0.003+Math.random()*0.004,
-  ph:Math.random()*Math.PI*2,
-}));
-// 빗방울 파티클
-const RAINDROPS=Array.from({length:60},(_,i)=>({
-  x:Math.random(), y:Math.random(),
-  len:8+Math.random()*12,
-  spd:0.04+Math.random()*0.03,
-  alpha:0.3+Math.random()*0.4,
-}));
-
-
-function drawSky(){
-  const W=canvas.width, H=canvas.height;
-  const {health,clean}=S;
-  const bad=1-Math.min(health,clean)/100;
-  const code=weatherScene.code;
-  const wType=getWeatherType(code);
-  const now=new Date();
-  const hour=now.getHours();
-  const isNight=(hour>=22||hour<5);
-  const isDusk=(hour>=18&&hour<22)||(hour>=5&&hour<8);
-
-  // ① 하늘 그라디언트 (시간대 반영)
-  const pal=getCurrentSkyPalette();
-  // 날씨가 흐리면 채도 줄이고 어둡게
-  const cloudDark = wType==='overcast'?0.45:wType==='rain'||wType==='thunder'||wType==='showers'?0.55:wType==='drizzle'?0.35:wType==='fog'?0.25:0;
-  const tr=pal.top.map(v=>Math.max(0,v-v*cloudDark));
-  const br=pal.bot.map(v=>Math.max(0,v-v*cloudDark));
-  const skyBad=bad*0.5;
-  const g=ctx.createLinearGradient(0,0,0,H*0.72);
-  g.addColorStop(0,`rgb(${lerp(tr[0],lerp(42,10,1-skyBad),skyBad)|0},${lerp(tr[1],lerp(32,12,1-skyBad),skyBad)|0},${lerp(tr[2],lerp(25,20,1-skyBad),skyBad)|0})`);
-  g.addColorStop(1,`rgb(${lerp(br[0],lerp(50,20,1-skyBad),skyBad)|0},${lerp(br[1],lerp(38,15,1-skyBad),skyBad)|0},${lerp(br[2],lerp(22,10,1-skyBad),skyBad)|0})`);
-  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-
-  // ② 안개 효과
-  if(wType==='fog'){
-    const fogA=0.45;
-    const fog=ctx.createLinearGradient(0,H*0.2,0,H*0.8);
-    fog.addColorStop(0,`rgba(200,200,190,${fogA*0.4})`);
-    fog.addColorStop(0.5,`rgba(200,200,190,${fogA})`);
-    fog.addColorStop(1,`rgba(180,180,170,${fogA*0.6})`);
-    ctx.fillStyle=fog; ctx.fillRect(0,0,W,H);
-  }
-
-  // ③ 별 (밤이고 맑을수록)
-  const clearness = wType==='clear'?1:wType==='mostly_clear'?0.7:wType==='partly_cloudy'?0.35:0;
-  const nightness = isNight?1:isDusk?0.3:0;
-  const starA=clamp(health/100*clean/100,0,1)*0.8*clearness*nightness;
-  if(starA>0.03){
-    const starPositions=[[.08,.06],[.22,.03],[.48,.09],[.64,.04],[.36,.13],[.82,.07],[.04,.18],[.53,.02],[.73,.16],[.17,.18],[.9,.12],[.12,.09],[.6,.15],[.78,.04],[.3,.07]];
-    starPositions.forEach(([sx,sy],si)=>{
-      const pulse=0.5+0.5*Math.sin(animT*1.5+sx*7+si);
-      ctx.fillStyle=`rgba(255,255,235,${starA*pulse})`;
-      ctx.beginPath(); ctx.arc(W*sx,H*sy,(1.2+pulse*0.8)*starA,0,Math.PI*2); ctx.fill();
-    });
-    // 큰 별 3개
-    [[.92,.05],[.45,.05],[.15,.04]].forEach(([sx,sy],si)=>{
-      const pulse=0.4+0.6*Math.abs(Math.sin(animT*0.9+si*2.3));
-      ctx.fillStyle=`rgba(255,255,200,${starA*pulse*0.9})`;
-      ctx.beginPath(); ctx.arc(W*sx,H*sy,2.2*pulse,0,Math.PI*2); ctx.fill();
-    });
-  }
-
-  // ④ 달 (밤에만)
-  if(nightness>0.1){
-    const moonA=clamp(health/100*0.85,0,0.85)*nightness*clearness;
-    if(moonA>0.05){
-      const moonR=lerp(245,190,bad), moonGv=lerp(245,150,bad), moonB=lerp(210,110,bad);
-      ctx.save(); ctx.globalAlpha=moonA;
-      const mg=ctx.createRadialGradient(W*0.82,H*0.09,0,W*0.82,H*0.09,30);
-      mg.addColorStop(0,`rgba(${moonR|0},${moonGv|0},${moonB|0},1)`);
-      mg.addColorStop(0.65,`rgba(${moonR|0},${moonGv|0},${moonB|0},0.35)`);
-      mg.addColorStop(1,'transparent');
-      ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(W*0.82,H*0.09,30,0,Math.PI*2); ctx.fill();
-      // 달 광채
-      const halo=ctx.createRadialGradient(W*0.82,H*0.09,20,W*0.82,H*0.09,60);
-      halo.addColorStop(0,`rgba(255,250,200,0.12)`);
-      halo.addColorStop(1,'transparent');
-      ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(W*0.82,H*0.09,60,0,Math.PI*2); ctx.fill();
-      ctx.restore();
-    }
-  }
-
-  // ⑤ 태양 (낮에 맑을 때)
-  const daytime = (!isNight&&!isDusk)?1:(isDusk&&hour>=5&&hour<8)?0.5:0;
-  if(daytime>0.05&&(wType==='clear'||wType==='mostly_clear'||wType==='partly_cloudy')){
-    const sunAlpha=daytime*(wType==='clear'?0.9:wType==='mostly_clear'?0.7:0.45);
-    const sunY=hour<12?lerp(0.22,0.08,(hour-8)/4):lerp(0.08,0.22,(hour-12)/6);
-    ctx.save(); ctx.globalAlpha=sunAlpha;
-    const sunG=ctx.createRadialGradient(W*0.78,H*Math.max(0.05,sunY),0,W*0.78,H*Math.max(0.05,sunY),45);
-    sunG.addColorStop(0,'rgba(255,252,180,1)');
-    sunG.addColorStop(0.4,'rgba(255,230,80,0.7)');
-    sunG.addColorStop(0.8,'rgba(255,200,50,0.2)');
-    sunG.addColorStop(1,'transparent');
-    ctx.fillStyle=sunG; ctx.beginPath(); ctx.arc(W*0.78,H*Math.max(0.05,sunY),45,0,Math.PI*2); ctx.fill();
-    ctx.restore();
-  }
-
-  // ⑥ 구름 (애니메이션)
-  const cloudCount = wType==='clear'?0:wType==='mostly_clear'?1:wType==='partly_cloudy'?3:wType==='overcast'||wType==='fog'?8:wType==='rain'||wType==='thunder'||wType==='showers'?7:wType==='drizzle'?5:wType==='snow'?6:2;
-  for(let ci=0;ci<Math.min(cloudCount,CLOUDS.length);ci++){
-    const c=CLOUDS[ci];
-    // animT 기반으로 위치 계산 (속도별로 다르게 이동, 1.4 주기로 루프)
-    const rawX=(c.x+animT*c.spd*0.06)%1.4;
-    const cx=W*rawX, cy=H*c.y, cw=W*c.w, ch=H*c.h;
-    const isRainCloud=(wType==='rain'||wType==='thunder'||wType==='showers')&&ci<4;
-    const isDrizzleCloud=wType==='drizzle';
-    const cr=isRainCloud?55:isDrizzleCloud?120:200, cg=isRainCloud?55:isDrizzleCloud?130:210, cb=isRainCloud?70:isDrizzleCloud?145:220;
-    const cloudAlpha=c.alpha*(isRainCloud?0.85:0.72);
-
-    ctx.save();
-    ctx.globalAlpha=cloudAlpha;
-    const cloudG=ctx.createRadialGradient(cx,cy,0,cx,cy+ch*0.3,cw*0.7);
-    cloudG.addColorStop(0,`rgba(${cr+30},${cg+30},${cb+30},0.95)`);
-    cloudG.addColorStop(0.5,`rgba(${cr},${cg},${cb},0.8)`);
-    cloudG.addColorStop(1,'transparent');
-    ctx.fillStyle=cloudG;
-    // 구름 모양 (타원 여러개 합성)
-    ctx.beginPath(); ctx.ellipse(cx,cy+ch*0.25,cw*0.48,ch*0.5,0,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(cx-cw*0.22,cy+ch*0.4,cw*0.32,ch*0.42,0,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(cx+cw*0.22,cy+ch*0.38,cw*0.3,ch*0.4,0,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(cx-cw*0.1,cy+ch*0.15,cw*0.28,ch*0.35,0,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(cx+cw*0.15,cy+ch*0.12,cw*0.25,ch*0.3,0,0,Math.PI*2); ctx.fill();
-    ctx.restore();
-  }
-
-  // ⑦ 빗줄기
-  if(wType==='rain'||wType==='showers'||wType==='drizzle'||wType==='thunder'){
-    const spd=wType==='drizzle'?0.18:wType==='rain'?0.32:wType==='thunder'?0.45:0.38;
-    const dropCount=wType==='drizzle'?28:wType==='thunder'?55:42;
-    const baseAlpha=wType==='drizzle'?0.55:0.7;
-    const dropLen=wType==='drizzle'?6:wType==='thunder'?18:12;
-    RAINDROPS.forEach((d,di)=>{
-      if(di>=dropCount) return;
-      // d.y를 phase offset으로 사용해 빗방울이 화면 전체에 고르게 분포
-      const ry=H*((d.y+animT*d.spd*spd)%1.0);
-      const rx=W*d.x;
-      ctx.strokeStyle=`rgba(160,200,240,${d.alpha*baseAlpha})`;
-      ctx.lineWidth=wType==='drizzle'?0.9:1.4;
-      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx-2,ry+dropLen); ctx.stroke();
-    });
-  }
-
-  // ⑧ 눈송이
-  if(wType==='snow'){
-    SNOWFLAKES.forEach(f=>{
-      const fy=H*((f.y+animT*f.spd*0.08)%1.05);
-      const fx=W*((f.x+Math.sin(animT*f.drift+f.ph)*0.05)%1);
-      ctx.fillStyle=`rgba(240,248,255,0.85)`;
-      ctx.beginPath(); ctx.arc(fx,fy,f.r,0,Math.PI*2); ctx.fill();
-    });
-  }
-
-  // ⑨ 번개 (천둥)
-  if(wType==='thunder'){
-    // animT 기반 번개 주기
-    const ltPeriod=4.5;
-    const ltPhase=(animT%ltPeriod)/ltPeriod;
-    if(ltPhase<0.06){
-      const flashStrength=(0.06-ltPhase)/0.06;
-      ctx.fillStyle=`rgba(210,225,255,${flashStrength*0.35})`;
-      ctx.fillRect(0,0,W,H);
-      if(flashStrength>0.6){
-        // 번개 줄기 (animT를 seed로 위치 결정)
-        const lx=W*(0.3+((animT*0.13)%1)*0.4);
-        ctx.strokeStyle=`rgba(255,255,255,${flashStrength*0.9})`;
-        ctx.lineWidth=2; ctx.lineCap='round';
-        ctx.beginPath(); ctx.moveTo(lx,0);
-        ctx.lineTo(lx+18,H*0.2); ctx.lineTo(lx-12,H*0.36);
-        ctx.lineTo(lx+14,H*0.52); ctx.stroke();
-      }
-    }
-  }
-
-  // ⑩ 스모그 (오염)
-  const smog=clamp((60-S.clean)/60,0,1)*0.38;
-  if(smog>0.01){
-    const sg=ctx.createRadialGradient(W/2,H*.35,0,W/2,H*.35,W*.75);
-    sg.addColorStop(0,`rgba(80,62,18,${smog})`);
-    sg.addColorStop(1,'transparent');
-    ctx.fillStyle=sg; ctx.fillRect(0,0,W,H);
-  }
-
-  // ⑪ 일출/일몰 노을 오버레이
-  if(hour>=5&&hour<8){
-    const t=(hour>=6?1-(hour-6)/2:0.5);
-    const glow=ctx.createLinearGradient(0,H*0.3,0,H*0.72);
-    glow.addColorStop(0,`rgba(255,140,40,${0.15*t})`);
-    glow.addColorStop(1,`rgba(255,80,20,${0.08*t})`);
-    ctx.fillStyle=glow; ctx.fillRect(0,0,W,H);
-  }
-  if(hour>=18&&hour<21){
-    const t=1-(hour-18)/3;
-    const glow=ctx.createLinearGradient(0,H*0.2,0,H*0.72);
-    glow.addColorStop(0,`rgba(255,100,30,${0.2*t})`);
-    glow.addColorStop(0.5,`rgba(220,60,20,${0.12*t})`);
-    glow.addColorStop(1,'transparent');
-    ctx.fillStyle=glow; ctx.fillRect(0,0,W,H);
-  }
-}
-
-// ── Ground ───────────────────────────────
-function drawGround(){
-  const W=canvas.width,H=canvas.height;
-  const {clean,toilet}=S;
-  const dirt=1-Math.min(clean,toilet)/100;
-
-  // Ground color: rich soil → cracked dark mud
-  const gr=ctx.createLinearGradient(0,H*.72,0,H);
-  gr.addColorStop(0,`rgb(${lerp(28,58,dirt)|0},${lerp(62,34,dirt)|0},${lerp(28,14,dirt)|0})`);
-  gr.addColorStop(1,`rgb(${lerp(18,38,dirt)|0},${lerp(42,22,dirt)|0},${lerp(18,8,dirt)|0})`);
-  ctx.fillStyle=gr;
-  ctx.beginPath();
-  ctx.moveTo(0,H*.75);
-  ctx.bezierCurveTo(W*.3,H*.71,W*.65,H*.73,W,H*.75);
-  ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath(); ctx.fill();
-
-  // Grass blades
-  const blades=16;
-  for(let i=0;i<blades;i++){
-    const bx=W*(i+.5)/blades+Math.sin(i*1.7)*6;
-    const by=H*.75-2;
-    const h=lerp(24,10,dirt)+Math.sin(i*2.3)*4;
-    const wilt=dirt*.65;
-    const sway=Math.sin(animT*.7+i*.6)*3;
-    const r=lerp(55,38,dirt), gg=lerp(148,65,dirt), b2=lerp(38,18,dirt);
-    ctx.strokeStyle=`rgb(${r|0},${gg|0},${b2|0})`;
-    ctx.lineWidth=2.5; ctx.lineCap='round';
-    ctx.beginPath();
-    ctx.moveTo(bx,by);
-    ctx.quadraticCurveTo(
-      bx+sway+wilt*20*(i%2?1:-1), by-h*.55,
-      bx+sway*1.6+wilt*30*(i%2?1:-1), by-h
-    );
-    ctx.stroke();
-  }
-
-  // Mud puddles / waste (toilet low)
-  const puddle=clamp((60-toilet)/60,0,1);
-  if(puddle>.08){
-    [[.17,.895],[.7,.875],[.43,.93]].forEach(([px,py],idx)=>{
-      if(idx>puddle*3-.3) return;
-      const pr=(20+idx*10)*puddle;
-      const pg=ctx.createRadialGradient(W*px,H*py,0,W*px,H*py,pr);
-      pg.addColorStop(0,`rgba(65,40,8,${.75*puddle})`);
-      pg.addColorStop(.7,`rgba(50,30,5,${.4*puddle})`);
-      pg.addColorStop(1,'transparent');
-      ctx.fillStyle=pg;
-      ctx.beginPath(); ctx.ellipse(W*px,H*py,pr*2.2,pr*.65,0,0,Math.PI*2); ctx.fill();
-      // surface sheen
-      ctx.strokeStyle=`rgba(80,55,15,${.3*puddle})`;
-      ctx.lineWidth=1;
-      ctx.beginPath(); ctx.ellipse(W*px,H*py,pr*1.2,pr*.3,0,0,Math.PI*2); ctx.stroke();
-    });
-  }
-
-  // Cracks in ground when very dry/dirty
-  if(dirt>.55){
-    const crackA=(dirt-.55)/.45*.6;
-    ctx.strokeStyle=`rgba(20,12,5,${crackA})`;
-    ctx.lineWidth=1;
-    [[.25,.85,.35,.9],[.6,.88,.68,.93],[.15,.92,.25,.96],[.72,.83,.78,.89]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(W*x1,H*y1); ctx.lineTo(W*x2,H*y2); ctx.stroke();
-    });
-  }
-}
-
-// ── Branch ───────────────────────────────
-function drawBranch(W,H){
-  const {clean}=S;
-  const bY=H*.615;
-  const dirt=1-clean/100;
-
-  // Branch hue: warm oak → dark rot
-  const br=lerp(118,52,dirt), bg=lerp(72,40,dirt), bb=lerp(32,24,dirt);
-  const col=`rgb(${br|0},${bg|0},${bb|0})`;
-  const dark=`rgb(${(br*.55)|0},${(bg*.55)|0},${(bb*.55)|0})`;
-
-  ctx.lineCap='round'; ctx.lineJoin='round';
-
-  // Shadow under branch
-  ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=18;
-  ctx.beginPath();
-  ctx.moveTo(W*.06,bY+30); ctx.bezierCurveTo(W*.28,bY+12,W*.72,bY+12,W*.94,bY+30);
-  ctx.stroke();
-
-  // Main branch body
-  ctx.strokeStyle=col; ctx.lineWidth=15;
-  ctx.beginPath();
-  ctx.moveTo(W*.06,bY+28); ctx.bezierCurveTo(W*.28,bY+10,W*.72,bY+10,W*.94,bY+28);
-  ctx.stroke();
-
-  // Top highlight
-  ctx.strokeStyle=`rgba(${Math.min(255,(br+40))|0},${Math.min(255,(bg+30))|0},${(bb+15)|0},0.4)`;
-  ctx.lineWidth=4;
-  ctx.beginPath();
-  ctx.moveTo(W*.1,bY+16); ctx.bezierCurveTo(W*.3,bY+4,W*.7,bY+4,W*.9,bY+16);
-  ctx.stroke();
-
-  // Bark texture lines
-  ctx.strokeStyle=`rgba(${(br*.6)|0},${(bg*.6)|0},${(bb*.6)|0},0.55)`;
-  ctx.lineWidth=1.5;
-  [-.28,-.13,.05,.2,.32].forEach((off,i)=>{
-    const bx=W/2+W*off, by=bY+12+Math.sin(off*4)*4;
-    ctx.beginPath(); ctx.moveTo(bx,by-5); ctx.lineTo(bx+(i%2?10:-9),by-16); ctx.stroke();
-  });
-
-  // Lichen / mold patches when dirty
-  if(dirt>.15){
-    const lA=clamp((dirt-.15)/.85,0,1);
-    [[W*.3,bY+6],[W*.55,bY+4],[W*.2,bY+10],[W*.68,bY+8]].forEach(([px,py],i)=>{
-      if(i>lA*4-.2) return;
-      ctx.fillStyle=`rgba(${lerp(70,40,lA)|0},${lerp(90,50,lA)|0},${lerp(30,20,lA)|0},${lA*.7})`;
-      ctx.beginPath(); ctx.ellipse(px,py,12+i*3,5+i,Math.sin(i)*.5,0,Math.PI*2); ctx.fill();
-    });
-  }
-
-  // Small side twigs
-  [[W*.18,bY+8,W*.1,bY-18],[W*.78,bY+10,W*.87,bY-14],[W*.48,bY+5,W*.44,bY-22]].forEach(([x1,y1,x2,y2])=>{
-    ctx.strokeStyle=col; ctx.lineWidth=5;
-    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    // twig tip leaves: green if clean, brown if dirty
-    const lc=lerp(.6,.3,dirt), lg=lerp(.85,.4,dirt), lb=lerp(.25,.15,dirt);
-    ctx.fillStyle=`rgba(${(lc*255)|0},${(lg*255)|0},${(lb*255)|0},${lerp(.9,.5,dirt)})`;
-    ctx.beginPath(); ctx.ellipse(x2,y2,6,3,Math.atan2(y2-y1,x2-x1),0,Math.PI*2); ctx.fill();
-  });
-}
-
-// ── Nest ─────────────────────────────────
-function drawNest(W,H){
-  const {food,clean}=S;
-  const cx=W/2, nY=H*.615-4;
-  const dirt=1-Math.min(clean,food)/100;
-  const hunger=1-food/100;
-
-  const nW=W*.26, nH=nW*.38;
-  // Nest color: warm straw → dark blackened
-  const nr=lerp(168,55,dirt), ng=lerp(128,44,dirt), nb=lerp(58,28,dirt);
-
-  // Nest bowl interior shadow
-  const nShadow=ctx.createRadialGradient(cx,nY+nH*.2,nW*.1,cx,nY+nH*.2,nW);
-  nShadow.addColorStop(0,`rgba(${(nr*.3)|0},${(ng*.3)|0},${(nb*.3)|0},0.9)`);
-  nShadow.addColorStop(1,'transparent');
-  ctx.fillStyle=nShadow;
-  ctx.save(); ctx.beginPath();
-  ctx.ellipse(cx,nY,nW,nH*.9,0,0,Math.PI*2); ctx.clip();
-  ctx.fillRect(cx-nW,nY-nH,nW*2,nH*2); ctx.restore();
-
-  // Woven horizontal strand arcs
-  for(let i=0;i<11;i++){
-    const t=i/10;
-    const ry=nY-nH*.05+nH*.6*t;
-    const rx=nW*Math.sqrt(Math.max(0,1-Math.pow((t-.5)/.6,2)))*1.1;
-    if(rx<2) continue;
-    ctx.strokeStyle=`rgba(${nr|0},${ng|0},${nb|0},${.5+.5*(i%2)})`;
-    ctx.lineWidth=i%2===0?2.5:1.8;
-    ctx.beginPath(); ctx.ellipse(cx,ry,rx,nH*.2,0,Math.PI,Math.PI*2); ctx.stroke();
-  }
-
-  // Vertical weave strands
-  for(let i=-4;i<=4;i++){
-    const bx=cx+i*(nW/4.5);
-    ctx.strokeStyle=`rgba(${(nr*.8)|0},${(ng*.8)|0},${(nb*.8)|0},0.45)`;
-    ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.moveTo(bx,nY-nH*.08);
-    ctx.bezierCurveTo(bx+i*2.5,nY+nH*.25,bx+i*2,nY+nH*.42,bx,nY+nH*.54);
-    ctx.stroke();
-  }
-
-  // Nest rim
-  ctx.strokeStyle=`rgb(${nr|0},${ng|0},${nb|0})`;
-  ctx.lineWidth=4.5; ctx.lineCap='round';
-  ctx.beginPath(); ctx.ellipse(cx,nY,nW,nH*.27,0,0,Math.PI*2); ctx.stroke();
-
-  // ── Food leaves inside nest ──────────────
-  const leafCount=Math.round(food/25); // 0~4
-  if(leafCount>0){
-    const leafPalette=[
-      [lerp(38,22,hunger),lerp(110,55,hunger),lerp(38,22,hunger)],
-      [lerp(50,28,hunger),lerp(130,60,hunger),lerp(45,24,hunger)],
-      [lerp(32,18,hunger),lerp(95,45,hunger),lerp(32,18,hunger)],
-      [lerp(62,34,hunger),lerp(150,70,hunger),lerp(50,28,hunger)],
-    ];
-    for(let i=0;i<leafCount;i++){
-      const lx=cx-nW*.32+i*(nW*.22)+Math.sin(i*1.3)*4;
-      const ly=nY+nH*.22+Math.cos(i*.8)*3;
-      const [lr,lg2,lb2]=leafPalette[i%4];
-      ctx.save(); ctx.translate(lx,ly); ctx.rotate(-.4+i*.28);
-      ctx.fillStyle=`rgb(${lr|0},${lg2|0},${lb2|0})`;
-      ctx.beginPath(); ctx.ellipse(0,0,8,4.5,0,0,Math.PI*2); ctx.fill();
-      // vein
-      ctx.strokeStyle=`rgba(${(lr*.6)|0},${(lg2*.6)|0},${(lb2*.6)|0},0.6)`;
-      ctx.lineWidth=.8; ctx.beginPath(); ctx.moveTo(-6,0); ctx.lineTo(6,0); ctx.stroke();
-      ctx.restore();
-    }
+  if (stocks.length) {
+    inputCount = Math.max(stocks.length, 7);
+    renderStockInputs();
+    renderCheckCards();
   } else {
-    // Empty nest floor - bare dark hollow
-    const eFloor=ctx.createRadialGradient(cx,nY+nH*.3,0,cx,nY+nH*.3,nW*.5);
-    eFloor.addColorStop(0,`rgba(${(nr*.35)|0},${(ng*.28)|0},${(nb*.28)|0},0.9)`);
-    eFloor.addColorStop(1,'transparent');
-    ctx.fillStyle=eFloor;
-    ctx.beginPath(); ctx.ellipse(cx,nY+nH*.28,nW*.55,nH*.22,0,0,Math.PI*2); ctx.fill();
-  }
-}
-
-// ── Mushrooms / berries (snack) ───────────
-function drawSnackIndicator(W,H){
-  const {snack}=S;
-  const count=Math.floor(snack/28)+( snack>85?1:0); // 0~4
-  const fresh=snack/100;
-
-  const spots=[[W*.07,H*.81],[W*.91,H*.82],[W*.14,H*.86],[W*.86,H*.87]];
-  for(let i=0;i<Math.min(count,4);i++){
-    const [mx,my]=spots[i];
-    // stem
-    ctx.fillStyle=`rgba(195,175,148,${.8*fresh+.1})`;
-    ctx.beginPath(); ctx.roundRect(mx-3.5,my-13,7,13,2); ctx.fill();
-    // cap gradient: red/pink when fresh → brown when stale
-    const cr=lerp(155,90,1-fresh), cg=lerp(45,68,1-fresh), cb=lerp(35,28,1-fresh);
-    const capG=ctx.createRadialGradient(mx-3,my-18,0,mx,my-13,13);
-    capG.addColorStop(0,`rgba(${Math.min(255,cr+50)|0},${cg|0},${cb|0},0.95)`);
-    capG.addColorStop(1,`rgb(${cr|0},${cg|0},${cb|0})`);
-    ctx.fillStyle=capG;
-    ctx.beginPath(); ctx.ellipse(mx,my-13,13,8.5,0,Math.PI,Math.PI*2); ctx.fill();
-    // spots
-    ctx.fillStyle=`rgba(255,255,255,${.65*fresh+.1})`;
-    [[0,-4],[5,-8],[-5,-7]].forEach(([sx,sy])=>{
-      ctx.beginPath(); ctx.arc(mx+sx,my+sy,2.2,0,Math.PI*2); ctx.fill();
-    });
-  }
-}
-
-// ── Flowers / buds (health) ───────────────
-function drawFlowers(W,H){
-  const {health}=S;
-  if(health<25) return;
-  const bloom=clamp((health-25)/75,0,1);
-  const bY=H*.615;
-  const count=health>75?3:health>50?2:1;
-
-  const fPos=[[W*.74,bY-28],[W*.23,bY-22],[W*.84,H*.76]];
-  const pColors=[['#ffb3c6','#ff85a1'],['#c8f0b0','#90d060'],['#b3d9ff','#80bfff']];
-  const petals6=[[0,-1],[.87,-.5],[.87,.5],[0,1],[-.87,.5],[-.87,-.5]];
-
-  for(let i=0;i<count;i++){
-    const [fx,fy]=fPos[i];
-    const sz=lerp(0,9,bloom);
-    const wilt=1-bloom;
-
-    // Stem
-    ctx.strokeStyle=`rgba(55,115,45,${bloom*.85+.1})`;
-    ctx.lineWidth=2; ctx.lineCap='round';
-    ctx.beginPath(); ctx.moveTo(fx,fy+sz*1.5); ctx.lineTo(fx+wilt*8,fy+sz*1.5+20); ctx.stroke();
-
-    if(sz<1.5) continue;
-
-    // Petals
-    ctx.globalAlpha=bloom*.88;
-    petals6.forEach(([px,py])=>{
-      const [c1,c2]=pColors[i];
-      ctx.fillStyle=i%2===0?c1:c2;
-      ctx.beginPath();
-      ctx.ellipse(fx+px*sz*1.5,fy+py*sz*1.5,sz*.85,sz*.45,Math.atan2(py,px),0,Math.PI*2);
-      ctx.fill();
-    });
-    ctx.globalAlpha=1;
-
-    // Center
-    ctx.fillStyle=health>60?'#ffe050':'#cc9020';
-    ctx.beginPath(); ctx.arc(fx,fy,sz*.62,0,Math.PI*2); ctx.fill();
-  }
-}
-
-// ── Fireflies (snack+health good) ──────────
-const FFly=Array.from({length:7},(_,i)=>({
-  ox:.1+(i/7)*.8, oy:.18+Math.random()*.42,
-  ph:Math.random()*Math.PI*2, spd:.3+Math.random()*.4,
-}));
-function drawFireflies(W,H){
-  const show=(S.snack+S.health)/200;
-  if(show<.5) return;
-  const alpha=clamp((show-.5)*2.2,0,1)*.85;
-  FFly.forEach(f=>{
-    const glow=.4+.6*Math.sin(animT*f.spd*2.2+f.ph);
-    const fx=W*(f.ox+.07*Math.sin(animT*f.spd+f.ph));
-    const fy=H*(f.oy+.05*Math.cos(animT*f.spd*1.4+f.ph));
-    const fg=ctx.createRadialGradient(fx,fy,0,fx,fy,8);
-    fg.addColorStop(0,`rgba(190,255,140,${alpha*glow})`);
-    fg.addColorStop(1,'transparent');
-    ctx.fillStyle=fg; ctx.beginPath(); ctx.arc(fx,fy,8,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle=`rgba(220,255,170,${alpha*glow*.9})`;
-    ctx.beginPath(); ctx.arc(fx,fy,1.8,0,Math.PI*2); ctx.fill();
-  });
-}
-
-// ── Sick aura ────────────────────────────
-function drawSickAura(W,H){
-  const {health}=S;
-  if(health>62) return;
-  const t=clamp((62-health)/62,0,1);
-
-  // Dark red vignette
-  const vig=ctx.createRadialGradient(W/2,H/2,H*.05,W/2,H/2,H*.85);
-  vig.addColorStop(0,'transparent');
-  vig.addColorStop(1,`rgba(60,0,0,${t*.6})`);
-  ctx.fillStyle=vig; ctx.fillRect(0,0,W,H);
-
-  // Sickly green ground mist
-  if(t>.25){
-    const mist=ctx.createLinearGradient(0,H*.68,0,H);
-    mist.addColorStop(0,'transparent');
-    mist.addColorStop(1,`rgba(35,55,8,${(t-.25)*.55})`);
-    ctx.fillStyle=mist; ctx.fillRect(0,H*.68,W,H*.32);
-  }
-
-  // Pulsing warning rings
-  if(health<30){
-    const pulse=.5+.5*Math.sin(animT*3);
-    ctx.strokeStyle=`rgba(200,20,20,${pulse*.35*t})`;
-    ctx.lineWidth=3;
-    ctx.beginPath(); ctx.roundRect(4,4,W-8,H-8,8); ctx.stroke();
-  }
-}
-
-// ── MAIN DRAW ────────────────────────────
-function drawScene(){
-  const W=canvas.width,H=canvas.height;
-  if(!W||!H) return;
-  ctx.clearRect(0,0,W,H);
-  drawSky();
-  drawGround();
-  drawBranch(W,H);
-  drawNest(W,H);
-  drawSnackIndicator(W,H);
-  drawFlowers(W,H);
-  drawFireflies(W,H);
-  drawSickAura(W,H);
-}
-
-// ═══════════════════════════════════════
-//  GAME LOGIC
-// ═══════════════════════════════════════
-function daysSince(){ return (Date.now()-S.bornAt)/86400000; }
-
-function checkStage(){
-  const d=daysSince(), thresh=[1,4,7];
-  if(S.stage<3&&d>=thresh[S.stage]&&S.health>20){
-    S.stage++;
-    showToast('🎉 '+st().name+' 단계가 됐어요!');
-    S.message=rand(S.stage===3?MSG.butterfly:MSG.happy);
-  }
-}
-
-function tick(){
-  const now=Date.now(), m=(now-S.lastTick)/60000; S.lastTick=now;
-  if(!S.sleeping){
-    S.food=clamp(S.food-DRAIN.food*m); S.clean=clamp(S.clean-DRAIN.clean*m);
-    S.toilet=clamp(S.toilet-DRAIN.toilet*m); S.snack=clamp(S.snack-DRAIN.snack*m);
-  }
-  // happiness drains slowly; boosted by snack+play, hurt by bad conditions
-  let happyDrain=0.4*m;
-  if(S.food<30||S.clean<30||S.toilet<30) happyDrain+=0.5*m;
-  if(S.snack>60) happyDrain-=0.2*m;
-  S.happy=clamp(S.happy-(S.sleeping?0:happyDrain));
-
-  let pen=0;
-  if(S.food<20)pen+=.5; if(S.clean<20)pen+=.3; if(S.toilet<20)pen+=.4; if(S.snack<10)pen+=.1;
-  if(S.happy<20)pen+=.2;
-  if(!S.sleeping)pen*=m;
-  S.health=clamp(S.health+(S.food>60&&S.clean>60&&S.toilet>60&&!S.sleeping?.1*m:-pen));
-  checkStage(); if(!qMsgTimer) pickMsg(); render(); saveState();
-}
-
-function pickMsg(){
-  if(qMsgTimer) return;
-  if(S.health<30){S.message=rand(MSG.sick);return;}
-  if(S.food<25){S.message=rand(MSG.hungry);return;}
-  if(S.toilet<25){S.message=rand(MSG.toilet);return;}
-  if(S.clean<25){S.message=rand(MSG.dirty);return;}
-  if(S.happy<25){S.message=rand(MSG.sad);return;}
-  if(S.snack<15){S.message=rand(MSG.nosnack);return;}
-  if(S.stage===3){S.message=rand(MSG.butterfly);return;}
-  if(S.stage===2){S.message=rand(MSG.cocoon);return;}
-  S.message=rand(MSG.happy);
-}
-
-const ACTIONS={
-  food:()=>{ if(S.food>=95){showToast(rand(FULLMSG.food));return;} S.food=clamp(S.food+30);showToast('🌡️ 따뜻해졌어요!'); },
-  clean:()=>{ if(S.clean>=95){showToast(rand(FULLMSG.clean));return;} S.clean=clamp(S.clean+35);showToast('🍃 주변이 깔끔해요!'); },
-  toilet:()=>{ if(S.toilet>=95){showToast(rand(FULLMSG.toilet));return;} S.toilet=clamp(S.toilet+40);showToast('🌬️ 공기가 맑아요!'); },
-  snack:()=>{ if(S.snack>=95){showToast(rand(FULLMSG.snack));return;} S.snack=clamp(S.snack+50);S.health=clamp(S.health+5);S.happy=clamp(S.happy+15);showToast('🍬 최고예요!'); },
-  sleep:()=>{ S.sleeping=!S.sleeping;showToast(S.sleeping?'😴 쿨쿨...':'😊 일어났어요!'); },
-  play:()=>{ S.health=clamp(S.health+3);S.food=clamp(S.food-5);S.happy=clamp(S.happy+20);showToast('🎮 즐거워요!'); },
-};
-function doAction(type){
-  const now=Date.now(),cd=CD[type]||0,last=S.cooldowns[type]||0;
-  if(now-last<cd){showToast(`⏳ ${Math.ceil((cd-(now-last))/1000)}초 후에 다시 해줘요!`);return;}
-  S.cooldowns[type]=now; ACTIONS[type]?.(); if(!qMsgTimer) pickMsg(); render();
-}
-
-// ═══════════════════════════════════════
-//  DOM RENDER
-// ═══════════════════════════════════════
-function render(){
-  const now=new Date(), p=n=>String(n).padStart(2,'0');
-  document.getElementById('datetime').textContent=
-    `📅 ${now.getFullYear()}.${p(now.getMonth()+1)}.${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
-  document.getElementById('stage-badge').textContent=st().emoji+' '+st().name;
-  document.getElementById('pet-emoji').textContent=st().emoji;
-  document.getElementById('pet-container').classList.toggle('pet-sick',S.health<30);
-  document.getElementById('speech-bubble').textContent=S.sleeping?'💤 쿨쿨쿨쿨...':S.message;
-
-  ['food','clean','toilet','snack'].forEach(k=>{
-    const el=document.getElementById('b-'+k);
-    el.style.width=S[k]+'%';
-    el.style.boxShadow=S[k]<20?'0 0 8px rgba(233,69,96,.8)':'none';
-  });
-  document.getElementById('health-fill').style.width=S.health+'%';
-  document.getElementById('health-val').textContent=Math.round(S.health)+'%';
-  document.getElementById('happy-fill').style.width=S.happy+'%';
-  document.getElementById('happy-val').textContent=Math.round(S.happy)+'%';
-
-  const now2=Date.now();
-  ['food','clean','toilet','snack','sleep','play'].forEach(b=>{
-    const btn=document.getElementById('btn-'+b);
-    const rem=(CD[b]||0)-(now2-(S.cooldowns[b]||0));
-    if(rem>0){btn.classList.add('cooling');btn.setAttribute('data-cd',Math.ceil(rem/1000)+'s');}
-    else{btn.classList.remove('cooling');btn.removeAttribute('data-cd');}
-  });
-  document.querySelector('#btn-sleep .btn-label').textContent=S.sleeping?'깨우기':'재워주기';
-  document.querySelector('#btn-sleep .btn-icon').textContent=S.sleeping?'☀️':'😴';
-  updatePetInfo();
-}
-
-// ═══════════════════════════════════════
-//  WEATHER (GPS 우선 → IP fallback)
-// ═══════════════════════════════════════
-const WMO={0:'맑음',1:'대체로맑음',2:'구름조금',3:'흐림',
-  45:'안개',48:'안개',51:'이슬비',53:'이슬비',55:'이슬비',
-  61:'비',63:'비',65:'폭우',71:'눈',73:'눈',75:'폭설',
-  80:'소나기',81:'소나기',82:'강한소나기',95:'뇌우',96:'뇌우',99:'뇌우'};
-const WIC={0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',48:'🌫',
-  51:'🌦',53:'🌦',55:'🌧',61:'🌧',63:'🌧',65:'🌧',
-  71:'🌨',73:'🌨',75:'❄️',80:'🌦',81:'🌧',82:'⛈',95:'⛈',96:'⛈',99:'⛈'};
-
-const LOC_CACHE_KEY='silkworm_loc_v1';
-
-// 마지막으로 성공한 위치 불러오기
-function loadCachedLoc(){
-  try{
-    const raw=localStorage.getItem(LOC_CACHE_KEY);
-    return raw?JSON.parse(raw):null;
-  }catch(_){return null;}
-}
-function saveCachedLoc(loc){
-  try{ localStorage.setItem(LOC_CACHE_KEY,JSON.stringify(loc)); }catch(_){}
-}
-
-let weatherCache = loadCachedLoc() || {lat:37.5665,lon:126.9780,city:'서울'};
-let weatherScene={code:0,temp:15,ready:false};
-
-// ① GPS로 현재 위치 가져오기 (역지오코딩으로 도시명 확보)
-function getLocationByGPS(){
-  return new Promise((resolve)=>{
-    if(!navigator.geolocation){ resolve(null); return; }
-    navigator.geolocation.getCurrentPosition(
-      async pos=>{
-        const lat=pos.coords.latitude, lon=pos.coords.longitude;
-        let city='현재위치';
-        try{
-          const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ko`);
-          const d=await r.json();
-          city=d.address?.city||d.address?.town||d.address?.county||d.address?.state||'현재위치';
-          city=city.replace(/(특별시|광역시|특별자치시|특별자치도)$/,'').replace(/시$/,'').trim()||city;
-        }catch(_){}
-        resolve({lat,lon,city});
-      },
-      _=>resolve(null),
-      {timeout:8000, maximumAge:0}
-    );
-  });
-}
-
-// 초기 로드: 캐시 → GPS 시도 (조용히)
-async function getBestLocation(){
-  const gps=await getLocationByGPS();
-  if(gps){ saveCachedLoc(gps); return gps; }
-  const cached=loadCachedLoc();
-  if(cached) return cached;
-  return {lat:37.5665,lon:126.9780,city:'서울'};
-}
-
-// 위경도로 날씨 가져오기
-async function fetchWeatherByCoord(lat, lon, city){
-  try{
-    const wUrl=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul`;
-    const wRes=await fetch(wUrl);
-    const wData=await wRes.json();
-    const c=wData.current;
-    const code=c.weathercode;
-    const temp=Math.round(c.temperature_2m);
-    const wind=Math.round(c.windspeed_10m*10)/10;
-    const sky=WMO[code]??'--';
-    const icon=WIC[code]??'🌡';
-    weatherScene.code=code; weatherScene.temp=temp; weatherScene.ready=true;
-
-    let dustLabel='--';
-    try{
-      const aRes=await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10&timezone=Asia%2FSeoul`);
-      const aData=await aRes.json();
-      const pm10=Math.round(aData.current.pm10);
-      dustLabel=pm10>150?'매우나쁨':pm10>80?'나쁨':pm10>30?'보통':'좋음';
-    }catch(_){}
-
-    const locEl=document.getElementById('petinfo-loc');
-    if(locEl) locEl.textContent=city;
-
-    const locPrefix=city==='현재위치'?'📍 ':city+' ';
-    document.getElementById('weather-info').textContent=
-      `${locPrefix}${icon}${sky} ${temp}°C 💨${wind}m/s 🌫미세:${dustLabel}`;
-  }catch(e){
-    document.getElementById('weather-info').textContent='날씨 정보 없음';
-  }
-}
-
-async function initWeather(){
-  document.getElementById('weather-info').textContent='위치 확인 중...';
-  const cached=loadCachedLoc();
-  if(cached){
-    weatherCache=cached;
-    const locEl=document.getElementById('petinfo-loc');
-    if(locEl) locEl.textContent=cached.city;
-    fetchWeatherByCoord(cached.lat,cached.lon,cached.city);
-  }
-  const best=await getBestLocation();
-  weatherCache=best;
-  await fetchWeatherByCoord(best.lat,best.lon,best.city);
-}
-
-// 위치반영 버튼: 항상 GPS 권한 새로 요청
-async function refreshWeather(){
-  const btnIcon=document.getElementById('loc-btn-icon');
-  const btnLabel=document.getElementById('loc-btn-label');
-  btnIcon.classList.add('spinning');
-  btnLabel.textContent='확인중...';
-  document.getElementById('weather-info').textContent='GPS 위치 확인 중...';
-
-  const gps=await getLocationByGPS();
-  if(gps){
-    saveCachedLoc(gps);
-    weatherCache=gps;
-    await fetchWeatherByCoord(gps.lat,gps.lon,gps.city);
-    showToast('📍 '+gps.city+' 위치로 반영됐어요!');
-  } else {
-    // GPS 거부/실패 시 캐시 또는 기본값으로 날씨만 갱신
-    const fallback=loadCachedLoc()||{lat:37.5665,lon:126.9780,city:'서울'};
-    weatherCache=fallback;
-    await fetchWeatherByCoord(fallback.lat,fallback.lon,fallback.city);
-    showToast('⚠️ 위치 권한이 필요해요. 설정에서 허용해 주세요.');
-  }
-
-  btnIcon.classList.remove('spinning');
-  btnLabel.textContent='위치반영';
-}
-
-
-let toastTimer;
-
-function showToast(msg){
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.classList.add('show');
-  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2500);
-}
-
-// ═══════════════════════════════════════
-//  ANIMATION LOOP
-// ═══════════════════════════════════════
-function loop(ts){ animT=ts/1000; drawScene(); requestAnimationFrame(loop); }
-
-window.addEventListener('resize',resizeCanvas);
-resizeCanvas(); render();
-requestAnimationFrame(loop);
-setInterval(tick,2000);
-setInterval(render,1000);
-setInterval(()=>{ if(qMsgTimer==null&&S.health>=30&&S.food>=25&&S.clean>=25&&S.toilet>=25){pickMsg();render();} },15000);
-
-// 날씨 갱신 버튼
-document.getElementById('loc-btn').addEventListener('click', refreshWeather);
-
-// ═══════════════════════════════════════
-//  자동 저장 데이터 있으면 3페이지로 이동
-// ═══════════════════════════════════════
-(function checkAutoResume(){
-  const savedRaw=localStorage.getItem('silkworm_state_v1');
-  const savedUser=localStorage.getItem('silkworm_user_v1');
-  if(!savedRaw) return; // 저장 데이터 없으면 타이틀 화면 유지
-
-  let parsedUser={};
-  try{ parsedUser=JSON.parse(savedUser||'{}'); }catch(_){}
-
-  // 이름이 하나라도 있어야 바로 진입
-  const hasName=parsedUser.userNickname||parsedUser.userPetname;
-  if(!hasName) return;
-
-  // 오프라인 경과 시간 계산 (저장 전 값 사용)
-  let offlineMin=0;
-  try{
-    const parsed=JSON.parse(savedRaw);
-    offlineMin=Math.round(Math.max(0,Date.now()-(parsed.lastTick||Date.now()))/60000);
-  }catch(_){}
-
-  // 3페이지로 바로 이동
-  goPage(3);
-
-  // 오프라인 시간 토스트
-  if(offlineMin>=1){
-    const h=Math.floor(offlineMin/60), m=offlineMin%60;
-    const timeStr=h>0?`${h}시간 ${m > 0 ? m+'분' : ''}`:`${m}분`;
-    setTimeout(()=>showToast(`⏰ ${timeStr} 동안 자리를 비웠어요! 상태를 확인해봐요~`),800);
+    renderStockInputs();
   }
 })();
 
-initWeather();
-setInterval(()=>fetchWeatherByCoord(weatherCache.lat,weatherCache.lon,weatherCache.city),600000);
+// ── 대상 입력 렌더 ──
+function renderStockInputs() {
+  const container = document.getElementById('stockInputs');
+  container.innerHTML = '';
+  for (let i = 0; i < inputCount; i++) {
+    appendStockInput(i, stocks[i] || '');
+  }
+}
+
+function appendStockInput(i, value) {
+  const container = document.getElementById('stockInputs');
+  const wrap = document.createElement('div');
+  wrap.className = 'stock-input-wrap';
+  wrap.id = `sw_${i}`;
+  wrap.innerHTML = `
+    <label>대상 ${i + 1}
+      <button class="btn-remove-stock" title="삭제" onclick="removeStockInput(${i})">✕</button>
+    </label>
+    <input type="text" placeholder="" maxlength="20"
+      value="${value}" id="si_${i}">
+  `;
+  container.appendChild(wrap);
+}
+
+// ── 추가 버튼 ──
+function addStockInput() {
+  const container = document.getElementById('stockInputs');
+  const i = inputCount;
+  inputCount++;
+  appendStockInput(i, '');
+}
+
+// ── 개별 삭제 ──
+function removeStockInput(i) {
+  const wrap = document.getElementById(`sw_${i}`);
+  if (wrap) wrap.remove();
+}
+
+// ── 적용 ──
+function applyStocks() {
+  const names = [];
+  // 현재 DOM에 남아있는 모든 input 읽기
+  const inputs = document.querySelectorAll('#stockInputs input[type="text"]');
+  inputs.forEach(inp => {
+    const v = inp.value.trim();
+    if (v) names.push(v);
+  });
+  if (!names.length) { alert('대상을 최소 1개 입력하세요.'); return; }
+  stocks = names;
+  currentCheck = {};
+  renderCheckCards();
+  saveLocal();
+  document.getElementById('statusMsg').textContent = `${stocks.length}개 대상 적용됨`;
+}
+
+// ── 체크 카드 렌더 ──
+function renderCheckCards() {
+  const section = document.getElementById('checkSection');
+  section.innerHTML = '';
+  stocks.forEach((name, idx) => {
+    const card = document.createElement('div');
+    card.className = 'stock-card';
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="stock-name">${name}</span>
+        <span class="stock-idx">#${idx + 1}</span>
+      </div>
+      <div class="dir-buttons" id="btns_${idx}">
+        ${DIRS.map(d => `
+          <button class="dir-btn" data-dir="${d.key}" data-idx="${idx}"
+            onclick="selectDir(${idx}, '${d.key}')">
+            ${d.label}
+          </button>
+        `).join('')}
+      </div>
+      <div class="memo-row">
+        <label>비고</label>
+        <textarea id="memo_${idx}" placeholder="메모 입력..." rows="1"
+          oninput="saveMemo(${idx}, this.value)"></textarea>
+      </div>
+    `;
+    section.appendChild(card);
+
+    if (currentCheck[name]) {
+      const { dir, memo } = currentCheck[name];
+      if (dir) highlightBtn(idx, dir);
+      if (memo) document.getElementById(`memo_${idx}`).value = memo;
+    }
+  });
+}
+
+// ── 방향 선택 ──
+function selectDir(idx, dirKey) {
+  const name = stocks[idx];
+  if (!currentCheck[name]) currentCheck[name] = {};
+  currentCheck[name].dir = dirKey;
+  highlightBtn(idx, dirKey);
+}
+
+function highlightBtn(idx, dirKey) {
+  const btns = document.querySelectorAll(`#btns_${idx} .dir-btn`);
+  btns.forEach(b => {
+    b.classList.toggle('selected', b.dataset.dir === dirKey);
+  });
+}
+
+function saveMemo(idx, val) {
+  const name = stocks[idx];
+  if (!currentCheck[name]) currentCheck[name] = {};
+  currentCheck[name].memo = val;
+}
+
+// ── 이번 주 저장 ──
+function saveRecord() {
+  if (!stocks.length) { alert('대상을 적용하세요.'); return; }
+  const date = document.getElementById('checkDate').value || new Date().toISOString().slice(0,10);
+  const items = stocks.map(name => ({
+    name,
+    dir: currentCheck[name]?.dir || null,
+    memo: currentCheck[name]?.memo || '',
+  }));
+  const existing = records.findIndex(r => r.date === date);
+  if (existing >= 0) {
+    if (!confirm(`${date} 기록이 이미 있습니다. 덮어쓰시겠습니까?`)) return;
+    records[existing] = { date, items };
+  } else {
+    records.unshift({ date, items });
+  }
+  saveLocal();
+  document.getElementById('statusMsg').textContent = `✅ ${date} 저장 완료`;
+}
+
+// ── 로컬 저장 ──
+function saveLocal() {
+  try {
+    localStorage.setItem('stockTrackerData', JSON.stringify({ stocks, records }));
+  } catch(e) {}
+}
+
+// ── 기록 모달 ──
+function openHistory() {
+  renderHistoryList();
+  document.getElementById('historyModal').classList.add('open');
+}
+function closeHistory() {
+  document.getElementById('historyModal').classList.remove('open');
+}
+
+function renderHistoryList() {
+  const list = document.getElementById('historyList');
+  if (!records.length) {
+    list.innerHTML = '<div class="empty-msg">저장된 기록이 없습니다.</div>';
+    return;
+  }
+  list.innerHTML = records.map((r, ri) => {
+    const chips = r.items.map(it => {
+      const cls = it.dir ? it.dir : 'none';
+      const label = it.dir ? DIRS.find(d=>d.key===it.dir)?.label : '미체크';
+      return `<span class="h-chip ${cls}">${it.name} ${label}</span>`;
+    }).join('');
+    return `
+      <div class="history-item" onclick="loadRecord(${ri})">
+        <div class="h-date">
+          📅 ${r.date}
+          <button class="h-del" onclick="event.stopPropagation(); deleteRecord(${ri})">삭제</button>
+        </div>
+        <div class="h-summary">${chips}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function loadRecord(ri) {
+  const r = records[ri];
+  document.getElementById('checkDate').value = r.date;
+  currentCheck = {};
+  r.items.forEach(it => {
+    currentCheck[it.name] = { dir: it.dir, memo: it.memo };
+  });
+  const names = r.items.map(i => i.name);
+  stocks = names;
+  inputCount = Math.max(stocks.length, 7);
+  renderStockInputs();
+  renderCheckCards();
+  closeHistory();
+  document.getElementById('statusMsg').textContent = `📂 ${r.date} 기록 불러옴`;
+}
+
+function deleteRecord(ri) {
+  if (!confirm('이 기록을 삭제하시겠습니까?')) return;
+  records.splice(ri, 1);
+  saveLocal();
+  renderHistoryList();
+}
+
+// ── CSV 내보내기 ──
+function exportCSV() {
+  if (!records.length) { alert('저장된 기록이 없습니다.'); return; }
+  const header = ['날짜', '대상', '방향', '비고'];
+  const rows = [header];
+  records.forEach(r => {
+    r.items.forEach(it => {
+      const dirLabel = it.dir ? DIRS.find(d=>d.key===it.dir)?.label || '' : '';
+      rows.push([r.date, it.name, dirLabel, it.memo]);
+    });
+  });
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '체크리스트기록.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── 달력 ──
+function openCalendar() {
+  renderCalendar();
+  document.getElementById('calModal').classList.add('open');
+}
+function closeCalendar() {
+  document.getElementById('calModal').classList.remove('open');
+}
+function calPrev() {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+function calNext() {
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const title = document.getElementById('calTitle');
+  const grid  = document.getElementById('calGrid');
+  title.textContent = `${calYear}년 ${calMonth + 1}월`;
+
+  // 저장된 날짜 Set
+  const savedDates = new Set(records.map(r => r.date));
+
+  const dayHeaders = ['일','월','화','수','목','금','토'];
+  let html = dayHeaders.map(d => `<div class="cal-day-header">${d}</div>`).join('');
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=일
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = new Date().toISOString().slice(0, 10);
+
+  // 빈 칸
+  for (let i = 0; i < firstDay; i++) {
+    html += `<div class="cal-cell"></div>`;
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday     = dateStr === today;
+    const hasRecord   = savedDates.has(dateStr);
+    let cls = 'cal-cell in-month';
+    if (isToday)   cls += ' today';
+    if (hasRecord) cls += ' has-record';
+    html += `<div class="${cls}" title="${hasRecord ? '기록 있음' : ''}">${d}</div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+// 모달 바깥 클릭 닫기
+document.getElementById('historyModal').addEventListener('click', function(e) {
+  if (e.target === this) closeHistory();
+});
+document.getElementById('calModal').addEventListener('click', function(e) {
+  if (e.target === this) closeCalendar();
+});
 </script>
 </body>
 </html>
